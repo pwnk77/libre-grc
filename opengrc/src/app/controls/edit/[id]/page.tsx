@@ -1,7 +1,7 @@
 "use client";
 
 import { Edit, useForm } from "@refinedev/antd";
-import { useMany } from "@refinedev/core";
+import { useMany, useCreate, useGetIdentity } from "@refinedev/core";
 import { useParams } from "next/navigation";
 import { Form, Input, Select, Tabs, Card, Row, Col, Typography, DatePicker } from "antd";
 import { Activity } from "../../activity";
@@ -17,6 +17,9 @@ export default function ControlEdit() {
     resource: "controls",
     id: params.id as string,
   });
+
+  const { mutate: createChangeHistory } = useCreate();
+  const { data: identity } = useGetIdentity<{ id: string }>();
 
   const { data, isLoading } = queryResult || {};
   const record = data?.data;
@@ -172,10 +175,40 @@ export default function ControlEdit() {
     },
   ];
 
+  const handleUpdate = async (values: any) => {
+    try {
+      const response = await formProps.onFinish?.(values);
+      if (response && 'data' in response) {
+        const changedFields = Object.keys(values).reduce((acc: Record<string, any>, key) => {
+          if (JSON.stringify(values[key]) !== JSON.stringify(record?.[key])) {
+            acc[key] = values[key];
+          }
+          return acc;
+        }, {});
+
+        if (Object.keys(changedFields).length > 0) {
+          createChangeHistory({
+            resource: "change_history",
+            values: {
+              table_name: "controls",
+              record_id: params.id,
+              action: "Updated",
+              change_details: JSON.stringify(changedFields),
+              changed_by: identity?.id,
+            },
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Error updating control:", error);
+    }
+  };
+
   return (
-    <Edit saveButtonProps={saveButtonProps} isLoading={isLoading}>
+    <Edit saveButtonProps={saveButtonProps}>
       <Form 
         {...formProps} 
+        onFinish={handleUpdate}
         layout="vertical"
         initialValues={{
           ...record,

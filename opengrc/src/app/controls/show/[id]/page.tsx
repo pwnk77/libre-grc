@@ -196,7 +196,6 @@ export default function ControlShow() {
       headerButtons={({ defaultButtons }) => (
         <>
           {defaultButtons}
-          <EditButton />
         </>
       )}
     >

@@ -1,16 +1,18 @@
 "use client";
 
 import { Create, useForm } from "@refinedev/antd";
-import { BaseKey, useList } from "@refinedev/core";
-import { Form, Input, Select, DatePicker, Typography, Tabs, Card, Row, Col, Tag } from "antd";
+import { BaseKey, useCreate, useGetIdentity, useList } from "@refinedev/core";
+import { Form, Input, Select, DatePicker, Typography, Tabs, Card, Row, Col } from "antd";
 import { useState, useEffect } from "react";
 
 const { Title, Text } = Typography;
 
 export default function ControlCreate() {
-  const { formProps, saveButtonProps } = useForm({
+  const { formProps, saveButtonProps, queryResult } = useForm({
     resource: "controls",
   });
+  const { mutate: createChangeHistory } = useCreate();
+  const { data: identity } = useGetIdentity<{ id: string }>();
 
   const [users, setUsers] = useState<{ value: BaseKey; label: string }[]>([]);
 
@@ -239,9 +241,35 @@ export default function ControlCreate() {
     },
   ];
 
+  interface CreateResponse {
+    data?: {
+      id: string | number;
+    };
+  }
+
+  const handleCreate = async (values: any) => {
+    try {
+      const response: CreateResponse = await formProps.onFinish?.(values) || {};
+      if (response.data?.id) {
+        createChangeHistory({
+          resource: "change_history",
+          values: {
+            table_name: "controls",
+            record_id: response.data.id,
+            action: "Created",
+            change_details: JSON.stringify(values),
+            changed_by: identity?.id,
+          },
+        });
+      }
+    } catch (error) {
+      console.error("Error creating control:", error);
+    }
+  };
+
   return (
     <Create saveButtonProps={saveButtonProps}>
-      <Form {...formProps} layout="vertical">
+      <Form {...formProps} onFinish={handleCreate} layout="vertical">
         <Row gutter={24}>
           <Col span={18}>
             <Tabs defaultActiveKey="1" items={tabItems} />

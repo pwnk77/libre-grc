@@ -226,19 +226,21 @@ export default function ControlList() {
   );
 
   const renderColumns = () => {
-    const actionColumn = {
-      title: "Actions",
-      dataIndex: "actions",
-      render: (_: any, record: BaseRecord) => (
-        <Space>
-          <EditButton hideText size="small" recordItemId={record.id} />
-          <DeleteButton hideText size="small" recordItemId={record.id} />
-        </Space>
-      ),
-    };
-
-    const visibleColumns = [actionColumn, ...allColumns.filter(col => selectedColumns.includes(col.dataIndex))];
-    return visibleColumns.map(column => <Table.Column key={column.dataIndex} {...column} />);
+    const visibleColumns = allColumns.filter(col => selectedColumns.includes(col.dataIndex));
+    return visibleColumns.map(column => {
+      if (column.dataIndex === 'control_id') {
+        return (
+          <Table.Column
+            key={column.dataIndex}
+            {...column}
+            render={(value: string, record: BaseRecord) => (
+              <a onClick={() => show("controls", record.id as BaseKey)}>{value}</a>
+            )}
+          />
+        );
+      }
+      return <Table.Column key={column.dataIndex} {...column} />;
+    });
   };
 
   return (
@@ -259,9 +261,6 @@ export default function ControlList() {
       <Table 
         {...tableProps} 
         rowKey="id"
-        onRow={(record) => ({
-          onClick: () => show("controls", record.id as BaseKey),
-        })}
       >
         {renderColumns()}
       </Table>

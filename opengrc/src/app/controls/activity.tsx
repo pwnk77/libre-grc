@@ -7,6 +7,21 @@ import { DateField } from "@refinedev/antd";
 const { Text, Title } = Typography;
 const { TextArea } = Input;
 
+const formatChangeDetails = (changeDetails: string) => {
+  try {
+    const changes = JSON.parse(changeDetails);
+    return Object.entries(changes).map(([key, value]) => (
+      <div key={key}>
+        <Text strong>{key}: </Text>
+        <Text>{JSON.stringify(value)}</Text>
+      </div>
+    ));
+  } catch (error) {
+    console.error("Error parsing change details:", error);
+    return <Text>{changeDetails}</Text>;
+  }
+};
+
 export function Activity({ parentId }: { parentId: string }) {
   const [newComment, setNewComment] = useState("");
   const [activeTab, setActiveTab] = useState("comments");
@@ -131,7 +146,7 @@ export function Activity({ parentId }: { parentId: string }) {
                   By {user?.full_name || "Unknown User"} on <DateField value={item.created_at} format="LLL" />
                 </Text>
                 <br />
-                <Text>{JSON.stringify(item.change_details)}</Text>
+                {formatChangeDetails(item.change_details)}
               </>
             ),
           };
