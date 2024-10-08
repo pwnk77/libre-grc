@@ -1,5 +1,5 @@
 import { DevtoolsProvider } from "@providers/devtools";
-import { useNotificationProvider } from "@refinedev/antd";
+import { Sider, useNotificationProvider } from "@refinedev/antd";
 import { Refine } from "@refinedev/core";
 import { RefineKbar, RefineKbarProvider } from "@refinedev/kbar";
 import routerProvider from "@refinedev/nextjs-router";
@@ -13,7 +13,7 @@ import { ColorModeContextProvider } from "@contexts/color-mode";
 import { authProviderClient } from "@providers/auth-provider";
 import { dataProvider } from "@providers/data-provider";
 import "@refinedev/antd/dist/reset.css";
-
+import { AuditOutlined, ControlOutlined, LogoutOutlined } from "@ant-design/icons";
 
 export const metadata: Metadata = {
   title: "open-grc",
@@ -54,6 +54,18 @@ export default function RootLayout({
                         show: "/controls/show/:id",
                         meta: {
                           canDelete: true,
+                          icon: <ControlOutlined />,
+                        },
+                      },
+                      {
+                        name: "audits",
+                        list: "/audits",
+                        create: "/audits/create",
+                        edit: "/audits/edit/:id",
+                        show: "/audits/show/:id",
+                        meta: {
+                          canDelete: true,
+                          icon: <AuditOutlined />,
                         },
                       },
                     ]}
