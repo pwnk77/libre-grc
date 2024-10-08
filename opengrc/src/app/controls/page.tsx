@@ -11,11 +11,11 @@ import {
   CreateButton,
 } from "@refinedev/antd";
 import { BaseKey, BaseRecord, CrudFilters, useNavigation } from "@refinedev/core";
-import { Space, Table, Checkbox, Button, Popover, Select } from "antd";
-import { useState } from "react";
+import { Space, Table, Checkbox, Button, Popover, Select, Input } from "antd";
+import { useState, useEffect } from "react";
 import { SettingOutlined } from "@ant-design/icons";
 
-export default function ControlList() {
+export default function ControlsLibrary() {
   const [selectedColumns, setSelectedColumns] = useState<string[]>([
     "control_id",
     "domain",
@@ -25,10 +25,11 @@ export default function ControlList() {
     "workflow_status",
     "created_at",
   ]);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const { show } = useNavigation();
 
-  const { tableProps, searchFormProps } = useTable({
+  const { tableProps, searchFormProps, setFilters } = useTable({
     syncWithLocation: true,
     pagination: {
       pageSize: 10,
@@ -52,33 +53,62 @@ export default function ControlList() {
     },
     onSearch: (params) => {
       const filters: CrudFilters = [];
-      const { q, compliance_status, workflow_status } = params as {
-        q: string;
+      const { compliance_status, workflow_status } = params as {
         compliance_status: string;
         workflow_status: string;
       };
 
-      filters.push({
-        field: "q",
-        operator: "eq",
-        value: q,
-      });
+      if (searchTerm) {
+        filters.push({
+          operator: "or",
+          value: [
+            { field: "control_id", operator: "contains", value: searchTerm },
+            { field: "domain", operator: "contains", value: searchTerm },
+            { field: "control_requirements", operator: "contains", value: searchTerm },
+            { field: "risk_statement", operator: "contains", value: searchTerm },
+            // Add more fields as needed
+          ],
+        });
+      }
 
-      filters.push({
-        field: "compliance_status",
-        operator: "eq",
-        value: compliance_status,
-      });
+      if (compliance_status) {
+        filters.push({
+          field: "compliance_status",
+          operator: "eq",
+          value: compliance_status,
+        });
+      }
 
-      filters.push({
-        field: "workflow_status",
-        operator: "eq",
-        value: workflow_status,
-      });
+      if (workflow_status) {
+        filters.push({
+          field: "workflow_status",
+          operator: "eq",
+          value: workflow_status,
+        });
+      }
 
       return filters;
     },
   });
+
+  // Clear search on page reload
+  useEffect(() => {
+    setSearchTerm("");
+  }, []);
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newSearchTerm = e.target.value;
+    setSearchTerm(newSearchTerm);
+    
+    if (newSearchTerm === "") {
+      // Reset the table and URL when search is cleared
+      setFilters([], "replace");
+    }
+  };
+
+  const handleSearch = () => {
+    searchFormProps?.onFinish?.({});
+  };
 
   const { selectProps: complianceStatusSelectProps } = useSelect({
     resource: "controls",
@@ -258,6 +288,14 @@ export default function ControlList() {
         </Popover>,
       ]}
     >
+      <Input.Search
+        placeholder="Search controls..."
+        value={searchTerm}
+        onChange={handleSearchChange}
+        onSearch={handleSearch}
+        style={{ marginBottom: 16 }}
+        allowClear
+      />
       <Table 
         {...tableProps} 
         rowKey="id"

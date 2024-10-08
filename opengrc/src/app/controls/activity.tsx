@@ -1,5 +1,5 @@
 import { useList, useCreate, useGetIdentity, useMany } from "@refinedev/core";
-import { List, Avatar, Typography, Input, Button, Timeline, Card } from "antd";
+import { List, Avatar, Typography, Input, Button, Timeline, Card, Spin } from "antd";
 import { UserOutlined, SendOutlined } from "@ant-design/icons";
 import { useState } from "react";
 import { DateField } from "@refinedev/antd";
@@ -34,6 +34,9 @@ export function Activity({ parentId }: { parentId: string }) {
       { field: "parent_id", operator: "eq", value: parentId },
     ],
     sorters: [{ field: "created_at", order: "desc" }],
+    queryOptions: {
+      enabled: !!parentId,
+    },
   });
 
   // History data
@@ -44,6 +47,9 @@ export function Activity({ parentId }: { parentId: string }) {
       { field: "record_id", operator: "eq", value: parentId },
     ],
     sorters: [{ field: "created_at", order: "desc" }],
+    queryOptions: {
+      enabled: !!parentId,
+    },
   });
 
   const userIds = [
@@ -87,32 +93,35 @@ export function Activity({ parentId }: { parentId: string }) {
 
   const renderComments = () => (
     <>
-      <List
-        loading={commentsLoading || userLoading}
-        itemLayout="horizontal"
-        dataSource={commentsData?.data || []}
-        locale={{ emptyText: "No comments yet" }}
-        renderItem={(item) => {
-          const user = userData?.data?.find((u) => u.id === item.user_id);
-          return (
-            <List.Item>
-              <List.Item.Meta
-                avatar={<Avatar icon={<UserOutlined />} />}
-                title={user?.full_name || "Anonymous"}
-                description={
-                  <>
-                    <Text>{item.content}</Text>
-                    <br />
-                    <Text type="secondary">
-                      <DateField value={item.created_at} format="LLL" />
-                    </Text>
-                  </>
-                }
-              />
-            </List.Item>
-          );
-        }}
-      />
+      {commentsLoading ? (
+        <Spin />
+      ) : (
+        <List
+          itemLayout="horizontal"
+          dataSource={commentsData?.data || []}
+          locale={{ emptyText: "No comments yet" }}
+          renderItem={(item) => {
+            const user = userData?.data?.find((u) => u.id === item.user_id);
+            return (
+              <List.Item>
+                <List.Item.Meta
+                  avatar={<Avatar icon={<UserOutlined />} />}
+                  title={user?.full_name || "Anonymous"}
+                  description={
+                    <>
+                      <Text>{item.content}</Text>
+                      <br />
+                      <Text type="secondary">
+                        <DateField value={item.created_at} format="LLL" />
+                      </Text>
+                    </>
+                  }
+                />
+              </List.Item>
+            );
+          }}
+        />
+      )}
       <div style={{ marginTop: 16 }}>
         <TextArea
           rows={4}
@@ -133,26 +142,32 @@ export function Activity({ parentId }: { parentId: string }) {
   );
 
   const renderHistory = () => (
-    <Timeline
-      items={
-        historyData?.data?.map((item) => {
-          const user = userData?.data?.find((u) => u.id === item.changed_by);
-          return {
-            children: (
-              <>
-                <Text strong>{item.action}</Text>
-                <br />
-                <Text type="secondary">
-                  By {user?.full_name || "Unknown User"} on <DateField value={item.created_at} format="LLL" />
-                </Text>
-                <br />
-                {formatChangeDetails(item.change_details)}
-              </>
-            ),
-          };
-        }) || []
-      }
-    />
+    <>
+      {historyLoading ? (
+        <Spin />
+      ) : (
+        <Timeline
+          items={
+            historyData?.data?.map((item) => {
+              const user = userData?.data?.find((u) => u.id === item.changed_by);
+              return {
+                children: (
+                  <>
+                    <Text strong>{item.action}</Text>
+                    <br />
+                    <Text type="secondary">
+                      By {user?.full_name || "Unknown User"} on <DateField value={item.created_at} format="LLL" />
+                    </Text>
+                    <br />
+                    {formatChangeDetails(item.change_details)}
+                  </>
+                ),
+              };
+            }) || []
+          }
+        />
+      )}
+    </>
   );
 
   return (
