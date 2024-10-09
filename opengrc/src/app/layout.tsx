@@ -13,7 +13,7 @@ import { ColorModeContextProvider } from "@contexts/color-mode";
 import { authProviderClient } from "@providers/auth-provider";
 import { dataProvider } from "@providers/data-provider";
 import "@refinedev/antd/dist/reset.css";
-import { AuditOutlined, ControlOutlined, LogoutOutlined } from "@ant-design/icons";
+import { AuditOutlined, ControlOutlined, LogoutOutlined, BookOutlined, FileTextOutlined, ExperimentOutlined } from "@ant-design/icons";
 
 export const metadata: Metadata = {
   title: "open-grc",
@@ -68,11 +68,45 @@ export default function RootLayout({
                           icon: <AuditOutlined />,
                         },
                       },
+                      {
+                        name: "authority_documents",
+                        list: "/authority_documents",
+                        create: "/authority_documents/create",
+                        edit: "/authority_documents/edit/:id",
+                        show: "/authority_documents/show/:id",
+                        meta: {
+                          canDelete: true,
+                          icon: <BookOutlined />,
+                        },
+                      },
+                      {
+                        name: "citations",
+                        list: "/citations",
+                        create: "/citations/create",
+                        edit: "/citations/edit/:id",
+                        show: "/citations/show/:id",
+                        meta: {
+                          canDelete: true,
+                          icon: <FileTextOutlined />,
+                        },
+                      },
+                      {
+                        name: "testing",
+                        list: "/testing",
+                        create: "/testing/create",
+                        edit: "/testing/edit/:id",
+                        show: "/testing/show/:id",
+                        meta: {
+                          canDelete: true,
+                          label: "Testing",
+                          icon: <ExperimentOutlined />,
+                        },
+                      },
                     ]}
                     options={{
                       syncWithLocation: true,
                       warnWhenUnsavedChanges: true,
-                      useNewQueryKeys: true,
+                      useNewQueryKeys: false,
                       projectId: "G9nsCS-VM02FI-KfqRO9",
                       title: { text: "open-grc", icon: <AppIcon /> },
                     }}
