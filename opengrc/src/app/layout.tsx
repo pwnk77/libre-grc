@@ -1,5 +1,5 @@
 import { DevtoolsProvider } from "@providers/devtools";
-import { Sider, useNotificationProvider } from "@refinedev/antd";
+import { useNotificationProvider } from "@refinedev/antd";
 import { Refine } from "@refinedev/core";
 import { RefineKbar, RefineKbarProvider } from "@refinedev/kbar";
 import routerProvider from "@refinedev/nextjs-router";
@@ -13,7 +13,7 @@ import { ColorModeContextProvider } from "@contexts/color-mode";
 import { authProviderClient } from "@providers/auth-provider";
 import { dataProvider } from "@providers/data-provider";
 import "@refinedev/antd/dist/reset.css";
-import { AuditOutlined, ControlOutlined, LogoutOutlined, BookOutlined, FileTextOutlined, ExperimentOutlined } from "@ant-design/icons";
+import { AuditOutlined, ControlOutlined, LogoutOutlined, BookOutlined, FileTextOutlined, ExperimentOutlined, AlertOutlined, SafetyOutlined } from "@ant-design/icons";
 
 export const metadata: Metadata = {
   title: "open-grc",
@@ -100,6 +100,30 @@ export default function RootLayout({
                           canDelete: true,
                           label: "Testing",
                           icon: <ExperimentOutlined />,
+                        },
+                      },
+                      {
+                        name: "risks",
+                        list: "/risks",
+                        create: "/risks/create",
+                        edit: "/risks/edit/:id",
+                        show: "/risks/show/:id",
+                        meta: {
+                          canDelete: true,
+                          label: "Risks",
+                          icon: <AlertOutlined />,
+                        },
+                      },
+                      {
+                        name: "secure_by_design",
+                        list: "/secure_by_design",
+                        create: "/secure_by_design/create",
+                        edit: "/secure_by_design/edit/:id",
+                        show: "/secure_by_design/show/:id",
+                        meta: {
+                          canDelete: true,
+                          label: "Secure by Design",
+                          icon: <SafetyOutlined />,
                         },
                       },
                     ]}
