@@ -3,14 +3,17 @@
 import { Edit, useForm, useSelect } from "@refinedev/antd";
 import { useMany, useCreate, useGetIdentity } from "@refinedev/core";
 import { useParams } from "next/navigation";
-import { Form, Input, Select, DatePicker, Tabs, Card, Row, Col, Typography } from "antd";
+import { Form, Input, Select, DatePicker, Tabs, Card, Row, Col, Typography, Divider } from "antd";
 import { Activity } from "../../activity";
 import { useAttachments } from "../../attachments";
 import dayjs from 'dayjs';
+import { TasksTab } from "../../tasks";
+import { AssetsTab } from "../../assets";
+import { useState } from "react";
 
 const { TextArea } = Input;
 const { TabPane } = Tabs;
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 export default function RiskEdit() {
   const params = useParams();
@@ -29,9 +32,29 @@ export default function RiskEdit() {
 
   const { selectProps: entitySelectProps } = useSelect({
     resource: "company_info",
-    optionLabel: "name",
+    optionLabel: "entity",
     optionValue: "id",
   });
+
+  const { selectProps: riskOwnerSelectProps } = useSelect({
+    resource: "users",
+    optionLabel: "full_name",
+    optionValue: "id",
+  });
+
+  const { selectProps: riskReporterSelectProps } = useSelect({
+    resource: "users",
+    optionLabel: "full_name",
+    optionValue: "id",
+  });
+
+  const { selectProps: riskManagerSelectProps } = useSelect({
+    resource: "users",
+    optionLabel: "full_name",
+    optionValue: "id",
+  });
+
+  const [activeTab, setActiveTab] = useState("1"); // Initialize with the first tab
 
   const handleUpdate = async (values: any) => {
     try {
@@ -62,6 +85,65 @@ export default function RiskEdit() {
     }
   };
 
+  const { data: companyInfoData } = useMany({
+    resource: "company_info",
+    ids: record?.company_info_id ? [record.company_info_id] : [],
+  });
+
+  const renderRightSideBox = () => (
+    <Card title="Contextual Information" style={{ marginBottom: 20, borderRadius: 8 }}>
+      <Row gutter={[16, 24]}>
+        <Col span={24}>
+          <Title level={4}>Ownership</Title>
+        </Col>
+        <Col span={24}>
+          <Title level={5}>Risk Owner</Title>
+          <Text>{record?.risk_owner?.full_name || "Not assigned"}</Text>
+        </Col>
+        <Col span={24}>
+          <Title level={5}>Risk Reporter</Title>
+          <Text>{record?.risk_reporter?.full_name || "Not assigned"}</Text>
+        </Col>
+        <Col span={24}>
+          <Title level={5}>Risk Manager</Title>
+          <Text>{record?.risk_manager?.full_name || "Not assigned"}</Text>
+        </Col>
+        <Divider />
+        <Col span={24}>
+          <Title level={4}>Company Information</Title>
+        </Col>
+        <Col span={24}>
+          <Title level={5}>Entity</Title>
+          <Text>{companyInfoData?.data?.[0]?.entity || "N/A"}</Text>
+        </Col>
+        <Col span={24}>
+          <Title level={5}>Business Unit</Title>
+          <Text>{companyInfoData?.data?.[0]?.business_unit || "N/A"}</Text>
+        </Col>
+        <Col span={24}>
+          <Title level={5}>Sub Business Unit</Title>
+          <Text>{companyInfoData?.data?.[0]?.sub_business_unit || "N/A"}</Text>
+        </Col>
+        <Col span={24}>
+          <Title level={5}>Support Function</Title>
+          <Text>{companyInfoData?.data?.[0]?.support_function || "N/A"}</Text>
+        </Col>
+        <Divider />
+        <Col span={24}>
+          <Title level={4}>Dates</Title>
+        </Col>
+        <Col span={12}>
+          <Title level={5}>Created At</Title>
+          <p>{record?.created_at ? dayjs(record.created_at).format('YYYY-MM-DD HH:mm:ss') : 'N/A'}</p>
+        </Col>
+        <Col span={12}>
+          <Title level={5}>Updated At</Title>
+          <p>{record?.updated_at ? dayjs(record.updated_at).format('YYYY-MM-DD HH:mm:ss') : 'N/A'}</p>
+        </Col>
+      </Row>
+    </Card>
+  );
+
   return (
     <Edit saveButtonProps={saveButtonProps}>
       <Form 
@@ -75,7 +157,10 @@ export default function RiskEdit() {
       >
         <Row gutter={24}>
           <Col span={18}>
-            <Tabs defaultActiveKey="1">
+            <Tabs 
+              activeKey={activeTab}
+              onChange={(key) => setActiveTab(key)}
+            >
               <TabPane tab="Basic Information" key="1">
                 <Row gutter={24}>
                   <Col span={12}>
@@ -104,58 +189,47 @@ export default function RiskEdit() {
                   <TextArea rows={4} />
                 </Form.Item>
                 <Row gutter={24}>
-                  <Col span={12}>
+                  <Col span={8}>
                     <Form.Item
-                      name="risk_analyst"
-                      label="Risk Analyst"
+                      name="risk_owner_id"
+                      label="Risk Owner"
                     >
-                      <Input />
+                      <Select {...riskOwnerSelectProps} />
                     </Form.Item>
                   </Col>
-                  <Col span={12}>
+                  <Col span={8}>
                     <Form.Item
-                      name="risk_reporter"
+                      name="risk_reporter_id"
                       label="Risk Reporter"
                     >
-                      <Input />
+                      <Select {...riskReporterSelectProps} />
+                    </Form.Item>
+                  </Col>
+                  <Col span={8}>
+                    <Form.Item
+                      name="risk_manager_id"
+                      label="Risk Manager"
+                    >
+                      <Select {...riskManagerSelectProps} />
                     </Form.Item>
                   </Col>
                 </Row>
               </TabPane>
-              <TabPane tab="Risk Details" key="2">
-                <Form.Item
-                  name="entity_id"
-                  label="Entity"
-                >
-                  <Select {...entitySelectProps} />
-                </Form.Item>
-                <Form.Item
-                  name="line_of_business"
-                  label="Line of Business"
-                >
-                  <Input />
-                </Form.Item>
-                <Form.Item
-                  name="assets"
-                  label="Assets"
-                >
-                  <Select mode="tags" />
-                </Form.Item>
-                <Form.Item
-                  name="support_functions"
-                  label="Support Functions"
-                >
-                  <Select mode="tags" />
-                </Form.Item>
-              </TabPane>
-              <TabPane tab="Risk Assessment" key="3">
+              <TabPane tab="Risk Assessment" key="2">
                 <Row gutter={24}>
                   <Col span={12}>
                     <Form.Item
                       name="impact_type"
                       label="Impact Type"
                     >
-                      <Input />
+                      <Select
+                        options={[
+                          { value: 'Financial', label: 'Financial' },
+                          { value: 'Operational', label: 'Operational' },
+                          { value: 'Reputational', label: 'Reputational' },
+                          { value: 'Compliance', label: 'Compliance' },
+                        ]}
+                      />
                     </Form.Item>
                   </Col>
                   <Col span={12}>
@@ -210,7 +284,7 @@ export default function RiskEdit() {
                   </Col>
                 </Row>
               </TabPane>
-              <TabPane tab="Risk Treatment" key="4">
+              <TabPane tab="Risk Treatment" key="3">
                 <Form.Item
                   name="risk_response"
                   label="Risk Response"
@@ -263,6 +337,12 @@ export default function RiskEdit() {
                   <TextArea rows={4} />
                 </Form.Item>
               </TabPane>
+              <TabPane tab="Tasks" key="4">
+                <TasksTab riskId={params.id as string} />
+              </TabPane>
+              <TabPane tab="Assets" key="5">
+                <AssetsTab riskId={params.id as string} />
+              </TabPane>
             </Tabs>
             <Form.Item
               name="workflow_status"
@@ -278,24 +358,17 @@ export default function RiskEdit() {
                 ]}
               />
             </Form.Item>
-            <Card title="Attachments" style={{ marginTop: 20, borderRadius: 8 }}>
-              {renderAttachments()}
-            </Card>
-            <Activity parentId={params.id as string} />
+            {activeTab !== "4" && activeTab !== "5" && (
+              <>
+                <Card title="Attachments" style={{ marginTop: 20, borderRadius: 8 }}>
+                  {renderAttachments()}
+                </Card>
+                <Activity parentId={params.id as string} />
+              </>
+            )}
           </Col>
           <Col span={6}>
-            <Card title="Contextual Information" style={{ marginBottom: 20, borderRadius: 8 }}>
-              <Row gutter={[16, 24]}>
-                <Col span={24}>
-                  <Title level={5}>Created At</Title>
-                  <p>{record?.created_at ? dayjs(record.created_at).format('YYYY-MM-DD HH:mm:ss') : 'N/A'}</p>
-                </Col>
-                <Col span={24}>
-                  <Title level={5}>Updated At</Title>
-                  <p>{record?.updated_at ? dayjs(record.updated_at).format('YYYY-MM-DD HH:mm:ss') : 'N/A'}</p>
-                </Col>
-              </Row>
-            </Card>
+            {renderRightSideBox()}
           </Col>
         </Row>
       </Form>

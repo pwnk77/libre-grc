@@ -6,6 +6,8 @@ import { useParams } from "next/navigation";
 import { Typography, Tabs, Card, Row, Col, Tag, Divider } from "antd";
 import { Activity } from "../../activity";
 import { useAttachments } from "../../attachments";
+import { TasksTab } from "../../tasks";
+import { AssetsTab } from "../../assets";
 
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
@@ -26,6 +28,26 @@ export default function RiskShow() {
     ids: record?.entity_id ? [record.entity_id] : [],
   });
 
+  const { data: riskOwnerData } = useMany({
+    resource: "users",
+    ids: record?.risk_owner_id ? [record.risk_owner_id] : [],
+  });
+
+  const { data: riskReporterData } = useMany({
+    resource: "users",
+    ids: record?.risk_reporter_id ? [record.risk_reporter_id] : [],
+  });
+
+  const { data: riskManagerData } = useMany({
+    resource: "users",
+    ids: record?.risk_manager_id ? [record.risk_manager_id] : [],
+  });
+
+  const { data: companyInfoData } = useMany({
+    resource: "company_info",
+    ids: record?.company_info_id ? [record.company_info_id] : [],
+  });
+
   const renderRightSideBox = () => (
     <Card title="Contextual Information" style={{ marginBottom: 20, borderRadius: 8 }}>
       <Row gutter={[16, 24]}>
@@ -33,12 +55,36 @@ export default function RiskShow() {
           <Title level={4}>Ownership</Title>
         </Col>
         <Col span={24}>
-          <Title level={5}>Risk Analyst</Title>
-          <Text>{record?.risk_analyst || "Not assigned"}</Text>
+          <Title level={5}>Risk Owner</Title>
+          <Text>{riskOwnerData?.data?.[0]?.full_name || "Not assigned"}</Text>
         </Col>
         <Col span={24}>
           <Title level={5}>Risk Reporter</Title>
-          <Text>{record?.risk_reporter || "Not assigned"}</Text>
+          <Text>{riskReporterData?.data?.[0]?.full_name || "Not assigned"}</Text>
+        </Col>
+        <Col span={24}>
+          <Title level={5}>Risk Manager</Title>
+          <Text>{riskManagerData?.data?.[0]?.full_name || "Not assigned"}</Text>
+        </Col>
+        <Divider />
+        <Col span={24}>
+          <Title level={4}>Company Information</Title>
+        </Col>
+        <Col span={24}>
+          <Title level={5}>Entity</Title>
+          <Text>{companyInfoData?.data?.[0]?.entity || "N/A"}</Text>
+        </Col>
+        <Col span={24}>
+          <Title level={5}>Business Unit</Title>
+          <Text>{companyInfoData?.data?.[0]?.business_unit || "N/A"}</Text>
+        </Col>
+        <Col span={24}>
+          <Title level={5}>Sub Business Unit</Title>
+          <Text>{companyInfoData?.data?.[0]?.sub_business_unit || "N/A"}</Text>
+        </Col>
+        <Col span={24}>
+          <Title level={5}>Support Function</Title>
+          <Text>{companyInfoData?.data?.[0]?.support_function || "N/A"}</Text>
         </Col>
         <Divider />
         <Col span={24}>
@@ -93,30 +139,6 @@ export default function RiskShow() {
     },
     {
       key: "2",
-      label: "Risk Details",
-      children: (
-        <Row gutter={[0, 24]}>
-          <Col span={24}>
-            <Title level={4}>Entity</Title>
-            <Text>{entityData?.data?.[0]?.name || "N/A"}</Text>
-          </Col>
-          <Col span={24}>
-            <Title level={4}>Line of Business</Title>
-            <Text>{record?.line_of_business}</Text>
-          </Col>
-          <Col span={24}>
-            <Title level={4}>Assets</Title>
-            <Text>{record?.assets?.join(", ")}</Text>
-          </Col>
-          <Col span={24}>
-            <Title level={4}>Support Functions</Title>
-            <Text>{record?.support_functions?.join(", ")}</Text>
-          </Col>
-        </Row>
-      ),
-    },
-    {
-      key: "3",
       label: "Risk Assessment",
       children: (
         <Row gutter={[0, 24]}>
@@ -140,7 +162,7 @@ export default function RiskShow() {
       ),
     },
     {
-      key: "4",
+      key: "3",
       label: "Risk Treatment",
       children: (
         <Row gutter={[0, 24]}>
@@ -165,6 +187,20 @@ export default function RiskShow() {
             <MarkdownField value={record?.risk_acceptance_justifications} />
           </Col>
         </Row>
+      ),
+    },
+    {
+      key: "4",
+      label: "Tasks",
+      children: (
+        <TasksTab riskId={params.id as string} />
+      ),
+    },
+    {
+      key: "5",
+      label: "Assets",
+      children: (
+        <AssetsTab riskId={params.id as string} />
       ),
     },
   ];
