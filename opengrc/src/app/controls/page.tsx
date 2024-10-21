@@ -11,7 +11,7 @@ import {
   CreateButton,
 } from "@refinedev/antd";
 import { BaseKey, BaseRecord, CrudFilters, useNavigation } from "@refinedev/core";
-import { Space, Table, Checkbox, Button, Popover, Select, Input } from "antd";
+import { Space, Table, Checkbox, Button, Popover, Select, Input, Tag } from "antd";
 import { useState, useEffect } from "react";
 import { SettingOutlined } from "@ant-design/icons";
 
@@ -160,14 +160,41 @@ export default function ControlsLibrary() {
     {
       dataIndex: "control_type",
       title: "Control Type",
+      render: (value: string) => {
+        const colorMap: { [key: string]: string } = {
+          'Preventive': 'blue',
+          'Detective': 'green',
+          'Corrective': 'orange',
+        };
+        return <Tag color={colorMap[value] || 'default'}>{value}</Tag>;
+      },
     },
     {
       dataIndex: "control_frequency",
       title: "Control Frequency",
+      render: (value: string) => {
+        const colorMap: { [key: string]: string } = {
+          'Continuous': 'green',
+          'Daily': 'blue',
+          'Weekly': 'cyan',
+          'Monthly': 'purple',
+          'Quarterly': 'magenta',
+          'Annually': 'red',
+        };
+        return <Tag color={colorMap[value] || 'default'}>{value}</Tag>;
+      },
     },
     {
       dataIndex: "control_design",
       title: "Control Design",
+      render: (value: string) => {
+        const colorMap: { [key: string]: string } = {
+          'Manual': 'orange',
+          'Automated': 'green',
+          'Hybrid': 'blue',
+        };
+        return <Tag color={colorMap[value] || 'default'}>{value}</Tag>;
+      },
     },
     {
       dataIndex: "technological_enabler",
@@ -176,18 +203,34 @@ export default function ControlsLibrary() {
     {
       dataIndex: "management_level",
       title: "Management Level",
+      render: (value: string) => {
+        const colorMap: { [key: string]: string } = {
+          'Strategic': 'red',
+          'Tactical': 'blue',
+          'Operational': 'green',
+        };
+        return <Tag color={colorMap[value] || 'default'}>{value}</Tag>;
+      },
     },
     {
       dataIndex: "compliance_status",
       title: "Compliance Status",
       sorter: true,
+      render: (value: string) => (
+        <Tag color={getComplianceStatusColor(value)}>{value}</Tag>
+      ),
       filterDropdown: (props: any) => (
         <FilterDropdown {...props}>
           <Select
             style={{ minWidth: 200 }}
             mode="multiple"
             placeholder="Select Compliance Status"
-            {...complianceStatusSelectProps}
+            options={[
+              { value: 'Not Implemented', label: 'Not Implemented' },
+              { value: 'Partially Implemented', label: 'Partially Implemented' },
+              { value: 'Implemented', label: 'Implemented' },
+              { value: 'Not Applicable', label: 'Not Applicable' },
+            ]}
           />
         </FilterDropdown>
       ),
@@ -196,13 +239,21 @@ export default function ControlsLibrary() {
       dataIndex: "workflow_status",
       title: "Workflow Status",
       sorter: true,
+      render: (value: string) => (
+        <Tag color={getWorkflowStatusColor(value)}>{value}</Tag>
+      ),
       filterDropdown: (props: any) => (
         <FilterDropdown {...props}>
           <Select
             style={{ minWidth: 200 }}
             mode="multiple"
             placeholder="Select Workflow Status"
-            {...workflowStatusSelectProps}
+            options={[
+              { value: 'Draft', label: 'Draft' },
+              { value: 'In Review', label: 'In Review' },
+              { value: 'Approved', label: 'Approved' },
+              { value: 'Retired', label: 'Retired' },
+            ]}
           />
         </FilterDropdown>
       ),
@@ -304,4 +355,34 @@ export default function ControlsLibrary() {
       </Table>
     </List>
   );
+}
+
+function getComplianceStatusColor(status: string): string {
+  switch (status) {
+    case 'Not Implemented':
+      return 'red';
+    case 'Partially Implemented':
+      return 'orange';
+    case 'Implemented':
+      return 'green';
+    case 'Not Applicable':
+      return 'gray';
+    default:
+      return 'default';
+  }
+}
+
+function getWorkflowStatusColor(status: string): string {
+  switch (status) {
+    case 'Draft':
+      return 'blue';
+    case 'In Review':
+      return 'orange';
+    case 'Approved':
+      return 'green';
+    case 'Retired':
+      return 'gray';
+    default:
+      return 'default';
+  }
 }

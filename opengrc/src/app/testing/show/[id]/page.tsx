@@ -3,9 +3,10 @@
 import { Show, MarkdownField, DateField } from "@refinedev/antd";
 import { useShow, useOne, useNavigation } from "@refinedev/core";
 import { useParams } from "next/navigation";
-import { Typography, Card, Row, Col, Tag, Divider } from "antd";
+import { Typography, Card, Row, Col, Tag, Divider, Tabs } from "antd";
 import { Activity } from "../../activity";
 import { useAttachments } from "../../attachments";
+import { TasksTab } from "../../tasks";
 
 const { Title, Text } = Typography;
 
@@ -30,6 +31,30 @@ export default function TestingShow() {
     },
   });
 
+  const { data: companyInfoData, isLoading: companyInfoLoading } = useOne({
+    resource: "company_info",
+    id: record?.company_info_id || "",
+    queryOptions: {
+      enabled: !!record?.company_info_id,
+    },
+  });
+
+  const { data: evidenceProviderData, isLoading: evidenceProviderLoading } = useOne({
+    resource: "users",
+    id: record?.evidence_provider_id || "",
+    queryOptions: {
+      enabled: !!record?.evidence_provider_id,
+    },
+  });
+
+  const { data: complianceManagerData, isLoading: complianceManagerLoading } = useOne({
+    resource: "users",
+    id: record?.compliance_manager_id || "",
+    queryOptions: {
+      enabled: !!record?.compliance_manager_id,
+    },
+  });
+
   const renderContent = () => (
     <Card>
       <Row gutter={[0, 24]}>
@@ -45,7 +70,9 @@ export default function TestingShow() {
         </Col>
         <Col span={24}>
           <Title level={4}>Audit Strategy</Title>
-          <MarkdownField value={record?.audit_strategy} />
+          <Tag color={getAuditStrategyColor(record?.audit_strategy)}>
+            {record?.audit_strategy}
+          </Tag>
         </Col>
         <Col span={24}>
           <Title level={4}>Test of Design</Title>
@@ -59,26 +86,6 @@ export default function TestingShow() {
           <Title level={4}>Test Results</Title>
           <MarkdownField value={record?.test_results} />
         </Col>
-        <Col span={12}>
-          <Title level={4}>Compliance Status</Title>
-          <Tag color={getComplianceStatusColor(record?.compliance_status)}>
-            {record?.compliance_status}
-          </Tag>
-        </Col>
-        <Col span={12}>
-          <Title level={4}>Workflow Status</Title>
-          <Tag color={getWorkflowStatusColor(record?.workflow_status)}>
-            {record?.workflow_status}
-          </Tag>
-        </Col>
-        <Col span={12}>
-          <Title level={4}>Test Date</Title>
-          <DateField value={record?.test_date} />
-        </Col>
-        <Col span={12}>
-          <Title level={4}>Tester</Title>
-          <Text>{record?.tester}</Text>
-        </Col>
         <Col span={24}>
           <Title level={4}>Notes</Title>
           <MarkdownField value={record?.notes} />
@@ -87,19 +94,64 @@ export default function TestingShow() {
     </Card>
   );
 
+  const tabItems = [
+    {
+      key: "1",
+      label: "Overview",
+      children: renderContent(),
+    },
+    {
+      key: "2",
+      label: "Tasks",
+      children: <TasksTab testingId={params.id as string} />,
+    },
+  ];
+
   return (
     <Show isLoading={isLoading} title="Testing Details">
       <Row gutter={24}>
         <Col span={18}>
-          {renderContent()}
+          <Tabs defaultActiveKey="1" items={tabItems} />
           <Card title="Attachments" style={{ marginTop: 20, borderRadius: 8 }}>
             {renderAttachments()}
           </Card>
           <Activity parentId={params.id as string} />
         </Col>
         <Col span={6}>
-          <Card title="Metadata">
+          <Card title="Contextual Information">
             <Row gutter={[0, 16]}>
+              <Col span={24}>
+                <Title level={5}>Company Info</Title>
+                <Text>{companyInfoData?.data?.entity || "N/A"}</Text>
+              </Col>
+              <Col span={24}>
+                <Title level={5}>Evidence Provider</Title>
+                <Text>{evidenceProviderData?.data?.full_name || "N/A"}</Text>
+              </Col>
+              <Col span={24}>
+                <Title level={5}>Compliance Manager</Title>
+                <Text>{complianceManagerData?.data?.full_name || "N/A"}</Text>
+              </Col>
+              <Col span={24}>
+                <Title level={5}>Compliance Status</Title>
+                <Tag color={getComplianceStatusColor(record?.compliance_status)}>
+                  {record?.compliance_status}
+                </Tag>
+              </Col>
+              <Col span={24}>
+                <Title level={5}>Workflow Status</Title>
+                <Tag color={getWorkflowStatusColor(record?.workflow_status)}>
+                  {record?.workflow_status}
+                </Tag>
+              </Col>
+              <Col span={24}>
+                <Title level={5}>Tester</Title>
+                <Text>{record?.tester}</Text>
+              </Col>
+              <Col span={24}>
+                <Title level={5}>Test Date</Title>
+                <DateField value={record?.test_date} />
+              </Col>
               <Col span={24}>
                 <Title level={5}>Created At</Title>
                 <DateField value={record?.created_at} />
@@ -141,6 +193,23 @@ function getWorkflowStatusColor(status: string | undefined) {
       return 'green';
     case 'Reviewed':
       return 'purple';
+    default:
+      return 'default';
+  }
+}
+
+function getAuditStrategyColor(strategy: string | undefined) {
+  switch (strategy) {
+    case 'Substantive':
+      return 'magenta';
+    case 'Control-based':
+      return 'cyan';
+    case 'Combined':
+      return 'geekblue';
+    case 'Risk-based':
+      return 'volcano';
+    case 'Compliance-based':
+      return 'gold';
     default:
       return 'default';
   }

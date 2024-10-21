@@ -27,7 +27,7 @@ export default function TestingCreate() {
           resource: "change_history",
           values: {
             table_name: "testing",
-            record_id: response.data.id,
+            record_id: (response as any)?.data?.id,
             action: "Created",
             change_details: JSON.stringify(values),
             changed_by: identity?.id,
@@ -73,7 +73,16 @@ export default function TestingCreate() {
           name="audit_strategy"
           label="Audit Strategy"
         >
-          <TextArea rows={4} />
+          <Select
+            style={{ width: '100%' }}
+            options={[
+              { value: 'Substantive', label: 'Substantive' },
+              { value: 'Control-based', label: 'Control-based' },
+              { value: 'Combined', label: 'Combined' },
+              { value: 'Risk-based', label: 'Risk-based' },
+              { value: 'Compliance-based', label: 'Compliance-based' },
+            ]}
+          />
         </Form.Item>
         <Form.Item
           name="test_of_design"

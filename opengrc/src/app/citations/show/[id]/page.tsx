@@ -3,7 +3,7 @@
 import { Show, MarkdownField, DateField } from "@refinedev/antd";
 import { useShow, useList, useOne } from "@refinedev/core";
 import { useParams } from "next/navigation";
-import { Typography, Card, Row, Col, Descriptions } from "antd";
+import { Typography, Card, Row, Col, Descriptions, Space } from "antd";
 import { Activity } from "../../activity";
 import { useAttachments } from "../../attachments";
 import { Select } from 'antd';
@@ -82,14 +82,23 @@ export default function CitationShow() {
                 <MarkdownField value={record?.citation_text} />
               </Descriptions.Item>
               <Descriptions.Item label="Reference Identifier">{record?.reference_identifier}</Descriptions.Item>
-              <Descriptions.Item label="Authority Document">
-                {isLoadingAuthorityDocument ? (
-                  "Loading..."
-                ) : (
-                  authorityDocumentData?.data?.title
-                )}
-              </Descriptions.Item>
             </Descriptions>
+          </Card>
+          <Card title="Related Authority Document" style={{ marginBottom: 20, borderRadius: 8 }}>
+            {isLoadingAuthorityDocument ? (
+              <Text>Loading...</Text>
+            ) : (
+              <Descriptions column={2}>
+                <Descriptions.Item label="Title">{authorityDocumentData?.data?.title}</Descriptions.Item>
+                <Descriptions.Item label="Type">{authorityDocumentData?.data?.type}</Descriptions.Item>
+                <Descriptions.Item label="Identifier">{authorityDocumentData?.data?.identifier}</Descriptions.Item>
+                <Descriptions.Item label="Issuing Body">{authorityDocumentData?.data?.issuing_body}</Descriptions.Item>
+                <Descriptions.Item label="Version">{authorityDocumentData?.data?.version}</Descriptions.Item>
+                <Descriptions.Item label="Publication Date">
+                  <DateField value={authorityDocumentData?.data?.publication_date} />
+                </Descriptions.Item>
+              </Descriptions>
+            )}
           </Card>
           <Card title="Attachments" style={{ marginTop: 20, borderRadius: 8 }}>
             {renderAttachments()}

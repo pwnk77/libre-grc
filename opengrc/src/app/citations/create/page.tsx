@@ -2,7 +2,7 @@
 
 import { Create, useForm } from "@refinedev/antd";
 import { useCreate, useGetIdentity, BaseRecord, CreateResponse } from "@refinedev/core";
-import { Form, Input, Card, Row, Col } from "antd";
+import { Form, Input, Card, Row, Col, Select } from "antd";
 import { useSelect } from "@refinedev/antd";
 
 const { TextArea } = Input;

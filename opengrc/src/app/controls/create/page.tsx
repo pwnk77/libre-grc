@@ -2,7 +2,7 @@
 
 import { Create, useForm } from "@refinedev/antd";
 import { BaseKey, useCreate, useGetIdentity, useList } from "@refinedev/core";
-import { Form, Input, Select, DatePicker, Typography, Tabs, Card, Row, Col } from "antd";
+import { Form, Input, Select, DatePicker, Typography, Tabs, Card, Row, Col, Tag } from "antd";
 import { useState, useEffect } from "react";
 
 const { Title, Text } = Typography;
@@ -15,9 +15,14 @@ export default function ControlCreate() {
   const { data: identity } = useGetIdentity<{ id: string }>();
 
   const [users, setUsers] = useState<{ value: BaseKey; label: string }[]>([]);
+  const [companies, setCompanies] = useState<{ value: BaseKey; label: string }[]>([]);
 
   const { data: userData, isLoading: userLoading } = useList({
     resource: "users",
+  });
+
+  const { data: companyData, isLoading: companyLoading } = useList({
+    resource: "companies",
   });
 
   useEffect(() => {
@@ -30,6 +35,16 @@ export default function ControlCreate() {
     }
   }, [userData]);
 
+  useEffect(() => {
+    if (companyData?.data) {
+      const formattedCompanies = companyData.data.map(company => ({
+        value: company.id,
+        label: company.name, // Adjust this field name if it's different in your data
+      }));
+      setCompanies(formattedCompanies as { value: BaseKey; label: string }[]);
+    }
+  }, [companyData]);
+
   const renderRightSideBox = () => (
     <Card title="Contextual Information" style={{ marginBottom: 20, borderRadius: 8 }}>
       <Row gutter={[16, 24]}>
@@ -37,18 +52,23 @@ export default function ControlCreate() {
           <Title level={4}>Ownership</Title>
         </Col>
         <Col span={24}>
-          <Form.Item label="Control Owner" name="control_owner">
+          <Form.Item label="Control Owner" name="control_owner_id">
             <Select options={users} loading={userLoading} />
           </Form.Item>
         </Col>
         <Col span={24}>
-          <Form.Item label="Process Owner" name="process_owner">
+          <Form.Item label="Process Owner" name="process_owner_id">
             <Select options={users} loading={userLoading} />
           </Form.Item>
         </Col>
         <Col span={24}>
-          <Form.Item label="Compliance SPOC" name="compliance_spoc">
+          <Form.Item label="Compliance SPOC" name="compliance_spoc_id">
             <Select options={users} loading={userLoading} />
+          </Form.Item>
+        </Col>
+        <Col span={24}>
+          <Form.Item label="Company" name="company_info_id">
+            <Select options={companies} loading={companyLoading} />
           </Form.Item>
         </Col>
         <Col span={24}>
@@ -58,10 +78,10 @@ export default function ControlCreate() {
           <Form.Item label="Compliance Status" name="compliance_status">
             <Select
               options={[
-                { value: "Not Implemented", label: "Not Implemented" },
-                { value: "Partially Implemented", label: "Partially Implemented" },
-                { value: "Implemented", label: "Implemented" },
-                { value: "Not Applicable", label: "Not Applicable" },
+                { value: "Not Implemented", label: <Tag color="red">Not Implemented</Tag> },
+                { value: "Partially Implemented", label: <Tag color="orange">Partially Implemented</Tag> },
+                { value: "Implemented", label: <Tag color="green">Implemented</Tag> },
+                { value: "Not Applicable", label: <Tag color="gray">Not Applicable</Tag> },
               ]}
             />
           </Form.Item>
@@ -70,10 +90,10 @@ export default function ControlCreate() {
           <Form.Item label="Workflow Status" name="workflow_status">
             <Select
               options={[
-                { value: "Draft", label: "Draft" },
-                { value: "In Review", label: "In Review" },
-                { value: "Approved", label: "Approved" },
-                { value: "Retired", label: "Retired" },
+                { value: "Draft", label: <Tag color="blue">Draft</Tag> },
+                { value: "In Review", label: <Tag color="orange">In Review</Tag> },
+                { value: "Approved", label: <Tag color="green">Approved</Tag> },
+                { value: "Retired", label: <Tag color="gray">Retired</Tag> },
               ]}
             />
           </Form.Item>
@@ -169,7 +189,13 @@ export default function ControlCreate() {
               label="Control Type"
               name="control_type"
             >
-              <Input />
+              <Select
+                options={[
+                  { value: 'Preventive', label: 'Preventive' },
+                  { value: 'Detective', label: 'Detective' },
+                  { value: 'Corrective', label: 'Corrective' },
+                ]}
+              />
             </Form.Item>
           </Col>
           <Col span={24}>
@@ -177,7 +203,16 @@ export default function ControlCreate() {
               label="Control Frequency"
               name="control_frequency"
             >
-              <Input />
+              <Select
+                options={[
+                  { value: 'Continuous', label: 'Continuous' },
+                  { value: 'Daily', label: 'Daily' },
+                  { value: 'Weekly', label: 'Weekly' },
+                  { value: 'Monthly', label: 'Monthly' },
+                  { value: 'Quarterly', label: 'Quarterly' },
+                  { value: 'Annually', label: 'Annually' },
+                ]}
+              />
             </Form.Item>
           </Col>
           <Col span={24}>
@@ -185,7 +220,13 @@ export default function ControlCreate() {
               label="Control Design"
               name="control_design"
             >
-              <Input />
+              <Select
+                options={[
+                  { value: 'Manual', label: 'Manual' },
+                  { value: 'Automated', label: 'Automated' },
+                  { value: 'Hybrid', label: 'Hybrid' },
+                ]}
+              />
             </Form.Item>
           </Col>
           <Col span={24}>
@@ -201,7 +242,13 @@ export default function ControlCreate() {
               label="Management Level"
               name="management_level"
             >
-              <Input />
+              <Select
+                options={[
+                  { value: 'Strategic', label: 'Strategic' },
+                  { value: 'Tactical', label: 'Tactical' },
+                  { value: 'Operational', label: 'Operational' },
+                ]}
+              />
             </Form.Item>
           </Col>
         </Row>

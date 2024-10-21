@@ -1,11 +1,9 @@
 "use client";
 
-import { Edit, useForm } from "@refinedev/antd";
+import { Edit, useForm, useSelect } from "@refinedev/antd";
 import { useMany, useCreate, useGetIdentity } from "@refinedev/core";
 import { useParams } from "next/navigation";
 import { Form, Input, Select, Card, Row, Col, Typography, DatePicker, Switch } from "antd";
-import { Activity } from "../../activity";
-import { useAttachments } from "../../attachments";
 import dayjs from 'dayjs';
 
 const { TextArea } = Input;
@@ -16,6 +14,7 @@ export default function SecureByDesignEdit() {
   const { formProps, saveButtonProps, queryResult } = useForm({
     resource: "secure_by_design",
     id: params.id as string,
+    action: "edit",
   });
 
   const { mutate: createChangeHistory } = useCreate();
@@ -24,14 +23,16 @@ export default function SecureByDesignEdit() {
   const { data, isLoading } = queryResult || {};
   const record = data?.data;
 
-  const { renderAttachments } = useAttachments(params.id as string);
-
-  const { data: companyData, isLoading: companyLoading } = useMany({
+  const { selectProps: companySelectProps } = useSelect({
     resource: "company_info",
-    ids: record?.entity_id ? [record.entity_id] : [],
-    queryOptions: {
-      enabled: !!record?.entity_id,
-    },
+    optionLabel: "entity",
+    optionValue: "id",
+  });
+
+  const { selectProps: userSelectProps } = useSelect({
+    resource: "users",
+    optionLabel: "full_name",
+    optionValue: "id",
   });
 
   const handleUpdate = async (values: any) => {
@@ -72,93 +73,100 @@ export default function SecureByDesignEdit() {
         initialValues={{
           ...record,
           expected_go_live_date: record?.expected_go_live_date ? dayjs(record.expected_go_live_date) : null,
-          created_at: record?.created_at ? dayjs(record.created_at) : null,
-          updated_at: record?.updated_at ? dayjs(record.updated_at) : null,
         }}
       >
-        <Card title="Secure by Design Details" style={{ marginBottom: 20, borderRadius: 8 }}>
-          <Row gutter={24}>
-            <Col span={12}>
-              <Form.Item name="product_name" label="Product Name" rules={[{ required: true }]}>
-                <Input />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item name="product_type" label="Product Type" rules={[{ required: true }]}>
+        <Row gutter={24}>
+          <Col span={18}>
+            <Card title="Secure by Design Details" style={{ marginBottom: 20, borderRadius: 8 }}>
+              <Row gutter={24}>
+                <Col span={12}>
+                  <Form.Item name="product_name" label="Product Name" rules={[{ required: true }]}>
+                    <Input />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item name="product_type" label="Product Type" rules={[{ required: true }]}>
+                    <Select
+                      options={[
+                        { value: 'New', label: 'New' },
+                        { value: 'Existing', label: 'Existing' },
+                      ]}
+                    />
+                  </Form.Item>
+                </Col>
+                <Col span={24}>
+                  <Form.Item name="description" label="Description">
+                    <TextArea rows={3} />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item name="expected_go_live_date" label="Expected Go Live Date">
+                    <DatePicker style={{ width: '100%' }} />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item name="infrastructure_details" label="Infrastructure Details">
+                    <Input />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item name="external_party_involvement" label="External Party Involvement" valuePropName="checked">
+                    <Switch />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item name="applicable_compliances" label="Applicable Compliances">
+                    <Select mode="tags" style={{ width: '100%' }} />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item name="advisory_provided" label="Advisory Provided">
+                    <Input />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item name="workflow_status" label="Workflow Status">
+                    <Select
+                      options={[
+                        { value: 'Initiation', label: 'Initiation' },
+                        { value: 'Design Review', label: 'Design Review' },
+                        { value: 'Implementation', label: 'Implementation' },
+                        { value: 'Verification', label: 'Verification' },
+                      ]}
+                    />
+                  </Form.Item>
+                </Col>
+              </Row>
+            </Card>
+          </Col>
+          <Col span={6}>
+            <Card title="Contextual Information" style={{ marginBottom: 20, borderRadius: 8 }}>
+              <Form.Item name="company_info_id" label="Company">
                 <Select
-                  options={[
-                    { value: 'New', label: 'New' },
-                    { value: 'Existing', label: 'Existing' },
-                  ]}
+                  {...companySelectProps}
+                  placeholder="Select Company"
+                  optionFilterProp="children"
+                  showSearch
+                  filterOption={(input, option) =>
+                    (option?.children as unknown as string).toLowerCase().includes(input.toLowerCase())
+                  }
                 />
               </Form.Item>
-            </Col>
-            <Col span={24}>
-              <Form.Item name="description" label="Description">
-                <TextArea rows={3} />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item name="line_of_business" label="Line of Business">
-                <Input />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item name="expected_go_live_date" label="Expected Go Live Date">
-                <DatePicker style={{ width: '100%' }} />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item name="entity_id" label="Entity">
+              <Form.Item name="product_owner_id" label="Product Owner">
                 <Select
-                  options={companyData?.data?.map(company => ({ value: company.id, label: company.name }))}
-                  loading={companyLoading}
+                  {...userSelectProps}
+                  placeholder="Select Product Owner"
                 />
               </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item name="infrastructure_details" label="Infrastructure Details">
-                <Input />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item name="external_party_involvement" label="External Party Involvement" valuePropName="checked">
-                <Switch />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item name="applicable_compliances" label="Applicable Compliances">
-                <Select mode="tags" style={{ width: '100%' }} />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item name="advisory_provided" label="Advisory Provided">
-                <Input />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item name="reviewer" label="Reviewer">
-                <Input />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item name="workflow_status" label="Workflow Status">
+              <Form.Item name="sbd_reviewer_id" label="SBD Reviewer">
                 <Select
-                  options={[
-                    { value: 'Initiation', label: 'Initiation' },
-                    { value: 'Design Review', label: 'Design Review' },
-                    { value: 'Implementation', label: 'Implementation' },
-                    { value: 'Verification', label: 'Verification' },
-                  ]}
+                  {...userSelectProps}
+                  placeholder="Select SBD Reviewer"
                 />
               </Form.Item>
-            </Col>
-          </Row>
-        </Card>
-        <Card title="Attachments" style={{ marginTop: 20, borderRadius: 8 }}>
-          {renderAttachments()}
-        </Card>
-        <Activity parentId={params.id as string} />
+            </Card>
+          </Col>
+        </Row>
       </Form>
     </Edit>
   );

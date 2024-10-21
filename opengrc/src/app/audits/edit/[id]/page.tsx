@@ -1,15 +1,16 @@
 "use client";
 
-import { Edit, useForm } from "@refinedev/antd";
+import { Edit, useForm, useSelect } from "@refinedev/antd";
 import { useMany, useCreate, useGetIdentity } from "@refinedev/core";
 import { useParams } from "next/navigation";
 import { Form, Input, Select, Tabs, Card, Row, Col, Typography, DatePicker } from "antd";
 import { Activity } from "../../activity";
 import { useAttachments } from "../../attachments";
 import dayjs from 'dayjs';
+import { TasksTab } from "../../tasks";
 
 const { TextArea } = Input;
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 export default function AuditEdit() {
   const params = useParams();
@@ -26,44 +27,49 @@ export default function AuditEdit() {
 
   const { renderAttachments } = useAttachments(params.id as string);
 
-  const userIds = [
-    record?.audit_partner,
-    record?.engagement_lead,
-  ].filter(Boolean);
+  const { selectProps: companyInfoSelectProps } = useSelect({
+    resource: "company_info",
+    optionLabel: "entity",
+    optionValue: "id",
+  });
 
-  const { data: userData, isLoading: userLoading } = useMany({
+  const { selectProps: userSelectProps } = useSelect({
     resource: "users",
-    ids: userIds,
-    queryOptions: {
-      enabled: userIds.length > 0,
-    },
+    optionLabel: "full_name",
+    optionValue: "id",
   });
 
   const renderRightSideBox = () => (
     <Card title="Contextual Information" style={{ marginBottom: 20, borderRadius: 8 }}>
-      <Form.Item name="audit_partner" label="Audit Partner">
+      <Form.Item name="company_info_id" label="Company Info">
         <Select
-          options={userData?.data?.map(user => ({ value: user.id, label: user.full_name }))}
-          loading={userLoading}
+          {...companyInfoSelectProps}
+          loading={companyInfoSelectProps.loading}
         />
       </Form.Item>
-      <Form.Item name="engagement_lead" label="Engagement Lead">
+      <Form.Item name="auditor_id" label="Audit Partner">
         <Select
-          options={userData?.data?.map(user => ({ value: user.id, label: user.full_name }))}
-          loading={userLoading}
+          {...userSelectProps}
+          loading={userSelectProps.loading}
         />
       </Form.Item>
-      <Form.Item name="created_at" label="Created At">
-        <DatePicker 
-          showTime 
-          format="YYYY-MM-DD HH:mm:ss"
+      <Form.Item name="auditee_id" label="Engagement Lead">
+        <Select
+          {...userSelectProps}
+          loading={userSelectProps.loading}
         />
       </Form.Item>
-      <Form.Item name="updated_at" label="Updated At">
-        <DatePicker 
-          showTime 
-          format="YYYY-MM-DD HH:mm:ss"
-        />
+      <Form.Item name="planned_start_date" label="Planned Start Date">
+        <DatePicker />
+      </Form.Item>
+      <Form.Item name="planned_end_date" label="Planned End Date">
+        <DatePicker />
+      </Form.Item>
+      <Form.Item name="actual_start_date" label="Actual Start Date">
+        <DatePicker />
+      </Form.Item>
+      <Form.Item name="actual_end_date" label="Actual End Date">
+        <DatePicker />
       </Form.Item>
       <Form.Item name="workflow_status" label="Workflow Status">
         <Select
@@ -73,6 +79,20 @@ export default function AuditEdit() {
             { value: 'Reporting', label: 'Reporting' },
             { value: 'Closed', label: 'Closed' },
           ]}
+        />
+      </Form.Item>
+      <Form.Item name="created_at" label="Created At">
+        <DatePicker 
+          showTime 
+          format="YYYY-MM-DD HH:mm:ss"
+          disabled
+        />
+      </Form.Item>
+      <Form.Item name="updated_at" label="Updated At">
+        <DatePicker 
+          showTime 
+          format="YYYY-MM-DD HH:mm:ss"
+          disabled
         />
       </Form.Item>
     </Card>
@@ -101,26 +121,6 @@ export default function AuditEdit() {
     },
     {
       key: "2",
-      label: "Dates",
-      children: (
-        <>
-          <Form.Item name="planned_start_date" label="Planned Start Date">
-            <DatePicker />
-          </Form.Item>
-          <Form.Item name="planned_end_date" label="Planned End Date">
-            <DatePicker />
-          </Form.Item>
-          <Form.Item name="actual_start_date" label="Actual Start Date">
-            <DatePicker />
-          </Form.Item>
-          <Form.Item name="actual_end_date" label="Actual End Date">
-            <DatePicker />
-          </Form.Item>
-        </>
-      ),
-    },
-    {
-      key: "3",
       label: "Stakeholders",
       children: (
         <>
@@ -129,6 +129,11 @@ export default function AuditEdit() {
           </Form.Item>
         </>
       ),
+    },
+    {
+      key: "tasks",
+      label: "Tasks",
+      children: <TasksTab auditId={params.id as string} />,
     },
   ];
 

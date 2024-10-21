@@ -1,9 +1,9 @@
 "use client";
 
 import { Edit, useForm } from "@refinedev/antd";
-import { useMany, useCreate, useGetIdentity } from "@refinedev/core";
+import { useMany, useCreate, useGetIdentity, useList } from "@refinedev/core";
 import { useParams } from "next/navigation";
-import { Form, Input, Select, Tabs, Card, Row, Col, Typography, DatePicker } from "antd";
+import { Form, Input, Select, Tabs, Card, Row, Col, Typography, DatePicker, Tag, List } from "antd";
 import { Activity } from "../../activity";
 import { useAttachments } from "../../attachments";
 import dayjs from 'dayjs'; // Import dayjs
@@ -28,10 +28,14 @@ export default function ControlEdit() {
 
   const { renderAttachments } = useAttachments(params.id as string);
 
+  const { data: companyData, isLoading: companyLoading } = useList({
+    resource: "company_info",
+  });
+
   const userIds = [
-    record?.control_owner,
-    record?.process_owner,
-    record?.compliance_spoc,
+    record?.control_owner_id,
+    record?.process_owner_id,
+    record?.compliance_spoc_id,
   ].filter(Boolean);
 
   const { data: userData, isLoading: userLoading } = useMany({
@@ -42,55 +46,71 @@ export default function ControlEdit() {
     },
   });
 
+  const { data: citationsData, isLoading: citationsLoading } = useMany({
+    resource: "citations",
+    ids: record?.citation_ids || [],
+    queryOptions: {
+      enabled: !!record?.citation_ids,
+    },
+  });
+
   const renderRightSideBox = () => (
     <Card title="Contextual Information" style={{ marginBottom: 20, borderRadius: 8 }}>
-      <Form.Item name="control_owner" label="Control Owner">
+      <Form.Item name="control_owner_id" label="Control Owner">
         <Select
           options={userData?.data?.map(user => ({ value: user.id, label: user.full_name }))}
           loading={userLoading}
         />
       </Form.Item>
-      <Form.Item name="process_owner" label="Process Owner">
+      <Form.Item name="process_owner_id" label="Process Owner">
         <Select
           options={userData?.data?.map(user => ({ value: user.id, label: user.full_name }))}
           loading={userLoading}
         />
       </Form.Item>
-      <Form.Item name="compliance_spoc" label="Compliance SPOC">
+      <Form.Item name="compliance_spoc_id" label="Compliance SPOC">
         <Select
           options={userData?.data?.map(user => ({ value: user.id, label: user.full_name }))}
           loading={userLoading}
+        />
+      </Form.Item>
+      <Form.Item name="company_info_id" label="Company">
+        <Select
+          options={companyData?.data?.map(company => ({ value: company.id, label: company.entity }))}
+          loading={companyLoading}
         />
       </Form.Item>
       <Form.Item name="created_at" label="Created At">
         <DatePicker 
           showTime 
           format="YYYY-MM-DD HH:mm:ss"
+          disabled
         />
       </Form.Item>
       <Form.Item name="updated_at" label="Updated At">
         <DatePicker 
           showTime 
           format="YYYY-MM-DD HH:mm:ss"
+          disabled
         />
       </Form.Item>
       <Form.Item name="compliance_status" label="Compliance Status">
         <Select
           options={[
-            { value: 'Not Implemented', label: 'Not Implemented' },
-            { value: 'Partially Implemented', label: 'Partially Implemented' },
-            { value: 'Implemented', label: 'Implemented' },
-            { value: 'Not Applicable', label: 'Not Applicable' },
+            { value: 'Not Implemented', label: <Tag color="red">Not Implemented</Tag> },
+            { value: 'Partially Implemented', label: <Tag color="orange">Partially Implemented</Tag> },
+            { value: 'Implemented', label: <Tag color="green">Implemented</Tag> },
+            { value: 'Not Applicable', label: <Tag color="gray">Not Applicable</Tag> },
           ]}
         />
       </Form.Item>
       <Form.Item name="workflow_status" label="Workflow Status">
         <Select
           options={[
-            { value: 'Draft', label: 'Draft' },
-            { value: 'In Review', label: 'In Review' },
-            { value: 'Approved', label: 'Approved' },
-            { value: 'Retired', label: 'Retired' },
+            { value: 'Draft', label: <Tag color="blue">Draft</Tag> },
+            { value: 'In Review', label: <Tag color="orange">In Review</Tag> },
+            { value: 'Approved', label: <Tag color="green">Approved</Tag> },
+            { value: 'Retired', label: <Tag color="gray">Retired</Tag> },
           ]}
         />
       </Form.Item>
@@ -141,38 +161,66 @@ export default function ControlEdit() {
       children: (
         <>
           <Form.Item name="control_type" label="Control Type">
-            <Input />
+            <Select
+              options={[
+                { value: 'Preventive', label: <Tag color="blue">Preventive</Tag> },
+                { value: 'Detective', label: <Tag color="green">Detective</Tag> },
+                { value: 'Corrective', label: <Tag color="orange">Corrective</Tag> },
+              ]}
+            />
           </Form.Item>
           <Form.Item name="control_frequency" label="Control Frequency">
-            <Input />
+            <Select
+              options={[
+                { value: 'Continuous', label: <Tag color="green">Continuous</Tag> },
+                { value: 'Daily', label: <Tag color="blue">Daily</Tag> },
+                { value: 'Weekly', label: <Tag color="cyan">Weekly</Tag> },
+                { value: 'Monthly', label: <Tag color="purple">Monthly</Tag> },
+                { value: 'Quarterly', label: <Tag color="magenta">Quarterly</Tag> },
+                { value: 'Annually', label: <Tag color="red">Annually</Tag> },
+              ]}
+            />
           </Form.Item>
           <Form.Item name="control_design" label="Control Design">
-            <Input />
+            <Select
+              options={[
+                { value: 'Manual', label: <Tag color="orange">Manual</Tag> },
+                { value: 'Automated', label: <Tag color="green">Automated</Tag> },
+                { value: 'Hybrid', label: <Tag color="blue">Hybrid</Tag> },
+              ]}
+            />
           </Form.Item>
           <Form.Item name="technological_enabler" label="Technological Enabler">
             <Input />
           </Form.Item>
           <Form.Item name="management_level" label="Management Level">
-            <Input />
+            <Select
+              options={[
+                { value: 'Strategic', label: <Tag color="red">Strategic</Tag> },
+                { value: 'Tactical', label: <Tag color="blue">Tactical</Tag> },
+                { value: 'Operational', label: <Tag color="green">Operational</Tag> },
+              ]}
+            />
           </Form.Item>
         </>
       ),
     },
     {
       key: "4",
-      label: "Framework",
+      label: "Citations",
       children: (
-        <>
-          <Form.Item name="framework_name" label="Framework Name">
-            <Input />
-          </Form.Item>
-          <Form.Item name="framework_version" label="Framework Version">
-            <Input />
-          </Form.Item>
-          <Form.Item name="framework_description" label="Framework Description">
-            <TextArea rows={5} />
-          </Form.Item>
-        </>
+        <List
+          dataSource={citationsData?.data || []}
+          loading={citationsLoading}
+          renderItem={(item) => (
+            <List.Item>
+              <List.Item.Meta
+                title={item.citation_text}
+                description={`Reference: ${item.reference_identifier}`}
+              />
+            </List.Item>
+          )}
+        />
       ),
     },
     {

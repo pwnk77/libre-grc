@@ -2,8 +2,6 @@
 
 import {
   DateField,
-  DeleteButton,
-  EditButton,
   List,
   useTable,
   FilterDropdown,
@@ -11,7 +9,7 @@ import {
   CreateButton,
 } from "@refinedev/antd";
 import { BaseKey, BaseRecord, CrudFilters, useNavigation } from "@refinedev/core";
-import { Space, Table, Checkbox, Button, Popover, Select, Input } from "antd";
+import { Table, Checkbox, Button, Popover, Select, Input, Tag } from "antd";
 import { useState, useEffect } from "react";
 import { SettingOutlined } from "@ant-design/icons";
 
@@ -63,7 +61,6 @@ export default function AuditsList() {
             { field: "audit_name", operator: "contains", value: searchTerm },
             { field: "scope", operator: "contains", value: searchTerm },
             { field: "description", operator: "contains", value: searchTerm },
-            // Add more fields as needed
           ],
         });
       }
@@ -80,7 +77,6 @@ export default function AuditsList() {
     },
   });
 
-  // Clear search on page reload
   useEffect(() => {
     setSearchTerm("");
   }, []);
@@ -90,7 +86,6 @@ export default function AuditsList() {
     setSearchTerm(newSearchTerm);
     
     if (newSearchTerm === "") {
-      // Reset the table and URL when search is cleared
       setFilters([], "replace");
     }
   };
@@ -103,7 +98,23 @@ export default function AuditsList() {
     resource: "audits",
     optionLabel: "workflow_status",
     optionValue: "workflow_status",
+    defaultValue: ["Planned", "In Progress", "Reporting", "Closed"],
   });
+
+  const getWorkflowStatusColor = (status: string) => {
+    switch (status) {
+      case 'Planned':
+        return 'blue';
+      case 'In Progress':
+        return 'orange';
+      case 'Reporting':
+        return 'purple';
+      case 'Closed':
+        return 'green';
+      default:
+        return 'default';
+    }
+  };
 
   const allColumns = [
     {
@@ -154,17 +165,12 @@ export default function AuditsList() {
       render: (stakeholders: string[]) => stakeholders?.join(", "),
     },
     {
-      dataIndex: "audit_partner",
-      title: "Audit Partner",
-    },
-    {
-      dataIndex: "engagement_lead",
-      title: "Engagement Lead",
-    },
-    {
       dataIndex: "workflow_status",
       title: "Workflow Status",
       sorter: true,
+      render: (value: string) => (
+        <Tag color={getWorkflowStatusColor(value)}>{value}</Tag>
+      ),
       filterDropdown: (props: any) => (
         <FilterDropdown {...props}>
           <Select

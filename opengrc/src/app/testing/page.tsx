@@ -11,7 +11,7 @@ import {
   CreateButton,
 } from "@refinedev/antd";
 import { BaseKey, BaseRecord, CrudFilters, useNavigation, useMany } from "@refinedev/core";
-import { Space, Table, Checkbox, Button, Popover, Select, Input } from "antd";
+import { Space, Table, Checkbox, Button, Popover, Select, Input, Tag } from "antd";
 import { useState, useEffect } from "react";
 import { SettingOutlined } from "@ant-design/icons";
 
@@ -130,15 +130,25 @@ export default function TestingList() {
 
   const allColumns = [
     {
-      dataIndex: "audit_strategy",
-      title: "Audit Strategy",
+      dataIndex: "control_id",
+      title: "Related Control",
+      render: (value: string, record: BaseRecord) => {
+        const control = controlData?.data?.find(c => c.id === value);
+        return (
+          <a onClick={() => show("controls", value)}>{control?.control_id || "N/A"}</a>
+        );
+      },
+    },
+    {
+      dataIndex: "evidence_request",
+      title: "Evidence Request",
       render: (value: string, record: BaseRecord) => (
         <a onClick={() => show("testing", record.id as BaseKey)}>{value || "View Details"}</a>
       ),
     },
     {
-      dataIndex: "evidence_request",
-      title: "Evidence Request",
+      dataIndex: "audit_strategy",
+      title: "Audit Strategy",
     },
     {
       dataIndex: "test_of_design",
@@ -156,6 +166,9 @@ export default function TestingList() {
       dataIndex: "compliance_status",
       title: "Compliance Status",
       sorter: true,
+      render: (value: string) => (
+        <Tag color={getComplianceStatusColor(value)}>{value}</Tag>
+      ),
       filterDropdown: (props: any) => (
         <FilterDropdown {...props}>
           <Select
@@ -176,6 +189,9 @@ export default function TestingList() {
       dataIndex: "workflow_status",
       title: "Workflow Status",
       sorter: true,
+      render: (value: string) => (
+        <Tag color={getWorkflowStatusColor(value)}>{value}</Tag>
+      ),
       filterDropdown: (props: any) => (
         <FilterDropdown {...props}>
           <Select
@@ -203,14 +219,8 @@ export default function TestingList() {
       title: "Tester",
     },
     {
-      dataIndex: "control_id",
-      title: "Related Control",
-      render: (value: string, record: BaseRecord) => {
-        const control = controlData?.data?.find(c => c.id === value);
-        return (
-          <a onClick={() => show("controls", value)}>{control?.control_id || "N/A"}</a>
-        );
-      },
+      dataIndex: "notes",
+      title: "Notes",
     },
   ];
 
@@ -274,4 +284,34 @@ export default function TestingList() {
       </Table>
     </List>
   );
+}
+
+function getComplianceStatusColor(status: string | undefined) {
+  switch (status) {
+    case 'Not Tested':
+      return 'blue';
+    case 'Failed':
+      return 'red';
+    case 'Passed with Exceptions':
+      return 'orange';
+    case 'Passed':
+      return 'green';
+    default:
+      return 'default';
+  }
+}
+
+function getWorkflowStatusColor(status: string | undefined) {
+  switch (status) {
+    case 'Planned':
+      return 'blue';
+    case 'In Progress':
+      return 'orange';
+    case 'Completed':
+      return 'green';
+    case 'Reviewed':
+      return 'purple';
+    default:
+      return 'default';
+  }
 }

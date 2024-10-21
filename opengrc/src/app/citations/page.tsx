@@ -10,7 +10,7 @@ import {
   useSelect,
   CreateButton,
 } from "@refinedev/antd";
-import { BaseKey, BaseRecord, CrudFilters, useNavigation } from "@refinedev/core";
+import { BaseKey, BaseRecord, CrudFilters, useNavigation, useMany } from "@refinedev/core";
 import { Space, Table, Checkbox, Button, Popover, Select, Input } from "antd";
 import { useState, useEffect } from "react";
 import { SettingOutlined } from "@ant-design/icons";
@@ -21,6 +21,7 @@ export default function CitationsList() {
     "reference_identifier",
     "authority_document_id",
     "created_at",
+    "updated_at",
   ]);
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -76,6 +77,16 @@ export default function CitationsList() {
     },
   });
 
+  const authorityDocumentIds = tableProps?.dataSource?.map((item: any) => item.authority_document_id).filter(Boolean) ?? [];
+
+  const { data: authorityDocumentsData, isLoading: authorityDocumentsLoading } = useMany({
+    resource: "authority_documents",
+    ids: authorityDocumentIds,
+    queryOptions: {
+      enabled: authorityDocumentIds.length > 0,
+    },
+  });
+
   // Clear search on page reload
   useEffect(() => {
     setSearchTerm("");
@@ -124,7 +135,16 @@ export default function CitationsList() {
           />
         </FilterDropdown>
       ),
-      render: (value: any, record: any) => record.authority_document?.title,
+      render: (value: any, record: any) => {
+        const authorityDocument = authorityDocumentsData?.data?.find(
+          (item: any) => item.id === record.authority_document_id
+        );
+        return (
+          <a onClick={() => show("authority_documents", record.authority_document_id as BaseKey)}>
+            {authorityDocument?.title || "N/A"}
+          </a>
+        );
+      },
     },
     {
       dataIndex: "created_at",

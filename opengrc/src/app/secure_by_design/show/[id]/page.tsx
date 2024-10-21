@@ -3,13 +3,15 @@
 import { Show, MarkdownField, DateField } from "@refinedev/antd";
 import { useShow, useMany, useList } from "@refinedev/core";
 import { useParams } from "next/navigation";
-import { Typography, Card, Row, Col, Tag, Divider } from "antd";
+import { Typography, Card, Row, Col, Tag, Divider, Tabs } from "antd";
 import { Activity } from "../../activity";
 import { useAttachments } from "../../attachments";
 import { Select } from 'antd';
 import { useRouter } from 'next/navigation';
+import { TasksTab } from "../../components/TasksTab";
 
 const { Text, Title } = Typography;
+const { TabPane } = Tabs;
 
 interface SecureByDesign {
   id: string;
@@ -41,9 +43,25 @@ export default function SecureByDesignShow() {
 
   const { data: companyData, isLoading: companyLoading } = useMany({
     resource: "company_info",
-    ids: record?.entity_id ? [record.entity_id] : [],
+    ids: record?.company_info_id ? [record.company_info_id] : [],
     queryOptions: {
-      enabled: !!record?.entity_id,
+      enabled: !!record?.company_info_id,
+    },
+  });
+
+  const { data: productOwnerData, isLoading: productOwnerLoading } = useMany({
+    resource: "users",
+    ids: record?.product_owner_id ? [record.product_owner_id] : [],
+    queryOptions: {
+      enabled: !!record?.product_owner_id,
+    },
+  });
+
+  const { data: sbdReviewerData, isLoading: sbdReviewerLoading } = useMany({
+    resource: "users",
+    ids: record?.sbd_reviewer_id ? [record.sbd_reviewer_id] : [],
+    queryOptions: {
+      enabled: !!record?.sbd_reviewer_id,
     },
   });
 
@@ -74,72 +92,93 @@ export default function SecureByDesignShow() {
         </>
       )}
     >
-      <Card title="Secure by Design Information" style={{ marginBottom: 20, borderRadius: 8 }}>
-        <Row gutter={[16, 16]}>
-          <Col span={12}>
-            <Title level={5}>Product Name</Title>
-            <Text>{record?.product_name}</Text>
-          </Col>
-          <Col span={12}>
-            <Title level={5}>Product Type</Title>
-            <Text>{record?.product_type}</Text>
-          </Col>
-          <Col span={24}>
-            <Title level={5}>Description</Title>
-            <MarkdownField value={record?.description} />
-          </Col>
-          <Col span={12}>
-            <Title level={5}>Line of Business</Title>
-            <Text>{record?.line_of_business}</Text>
-          </Col>
-          <Col span={12}>
-            <Title level={5}>Expected Go Live Date</Title>
-            <DateField value={record?.expected_go_live_date} />
-          </Col>
-          <Col span={12}>
-            <Title level={5}>Entity</Title>
-            <Text>{companyData?.data?.[0]?.name || 'N/A'}</Text>
-          </Col>
-          <Col span={12}>
-            <Title level={5}>Infrastructure Details</Title>
-            <Text>{record?.infrastructure_details}</Text>
-          </Col>
-          <Col span={12}>
-            <Title level={5}>External Party Involvement</Title>
-            <Text>{record?.external_party_involvement ? 'Yes' : 'No'}</Text>
-          </Col>
-          <Col span={12}>
-            <Title level={5}>Applicable Compliances</Title>
-            <Text>{record?.applicable_compliances?.join(', ')}</Text>
-          </Col>
-          <Col span={12}>
-            <Title level={5}>Advisory Provided</Title>
-            <Text>{record?.advisory_provided}</Text>
-          </Col>
-          <Col span={12}>
-            <Title level={5}>Reviewer</Title>
-            <Text>{record?.reviewer}</Text>
-          </Col>
-          <Col span={12}>
+      <Row gutter={24}>
+        <Col span={18}>
+          <Card title="Secure by Design Information" style={{ marginBottom: 20, borderRadius: 8 }}>
+            <Row gutter={[16, 16]}>
+              <Col span={12}>
+                <Title level={5}>Product Name</Title>
+                <Text>{record?.product_name}</Text>
+              </Col>
+              <Col span={12}>
+                <Title level={5}>Product Type</Title>
+                <Text>{record?.product_type}</Text>
+              </Col>
+              <Col span={24}>
+                <Title level={5}>Description</Title>
+                <MarkdownField value={record?.description} />
+              </Col>
+              <Col span={12}>
+                <Title level={5}>Expected Go Live Date</Title>
+                <DateField value={record?.expected_go_live_date} />
+              </Col>
+              <Col span={12}>
+                <Title level={5}>Infrastructure Details</Title>
+                <Text>{record?.infrastructure_details}</Text>
+              </Col>
+              <Col span={12}>
+                <Title level={5}>External Party Involvement</Title>
+                <Text>{record?.external_party_involvement ? 'Yes' : 'No'}</Text>
+              </Col>
+              <Col span={12}>
+                <Title level={5}>Applicable Compliances</Title>
+                <Text>{record?.applicable_compliances?.join(', ')}</Text>
+              </Col>
+              <Col span={12}>
+                <Title level={5}>Advisory Provided</Title>
+                <Text>{record?.advisory_provided}</Text>
+              </Col>
+              <Col span={12}>
+                <Title level={5}>Company</Title>
+                <Text>{companyData?.data?.[0]?.entity || 'N/A'}</Text>
+              </Col>
+              <Col span={12}>
+                <Title level={5}>Business Unit</Title>
+                <Text>{companyData?.data?.[0]?.business_unit || 'N/A'}</Text>
+              </Col>
+              <Col span={12}>
+                <Title level={5}>Sub Business Unit</Title>
+                <Text>{companyData?.data?.[0]?.sub_business_unit || 'N/A'}</Text>
+              </Col>
+              <Col span={12}>
+                <Title level={5}>Support Function</Title>
+                <Text>{companyData?.data?.[0]?.support_function || 'N/A'}</Text>
+              </Col>
+            </Row>
+          </Card>
+          <Tabs defaultActiveKey="1" style={{ marginTop: 20 }}>
+            <TabPane tab="Attachments" key="1">
+              {renderAttachments()}
+            </TabPane>
+            <TabPane tab="Activity" key="2">
+              <Activity parentId={params.id as string} />
+            </TabPane>
+            <TabPane tab="Tasks" key="3">
+              <TasksTab secureByDesignId={params.id as string} />
+            </TabPane>
+          </Tabs>
+        </Col>
+        <Col span={6}>
+          <Card title="Contextual Information" style={{ marginBottom: 20, borderRadius: 8 }}>
+            <Title level={5}>Product Owner</Title>
+            <Text>{productOwnerData?.data?.[0]?.full_name || 'N/A'}</Text>
+            <Divider />
+            <Title level={5}>SBD Reviewer</Title>
+            <Text>{sbdReviewerData?.data?.[0]?.full_name || 'N/A'}</Text>
+            <Divider />
             <Title level={5}>Workflow Status</Title>
             <Tag color={getWorkflowStatusColor(record?.workflow_status)}>
               {record?.workflow_status}
             </Tag>
-          </Col>
-          <Col span={12}>
+            <Divider />
             <Title level={5}>Created At</Title>
             <DateField value={record?.created_at} />
-          </Col>
-          <Col span={12}>
+            <Divider />
             <Title level={5}>Updated At</Title>
             <DateField value={record?.updated_at} />
-          </Col>
-        </Row>
-      </Card>
-      <Card title="Attachments" style={{ marginTop: 20, borderRadius: 8 }}>
-        {renderAttachments()}
-      </Card>
-      <Activity parentId={params.id as string} />
+          </Card>
+        </Col>
+      </Row>
     </Show>
   );
 }

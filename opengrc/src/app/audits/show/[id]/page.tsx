@@ -1,13 +1,14 @@
 "use client";
 
 import { Show, MarkdownField, DateField } from "@refinedev/antd";
-import { useShow, useMany, useList } from "@refinedev/core";
+import { useShow, useMany, useList, useOne } from "@refinedev/core";
 import { useParams } from "next/navigation";
 import { Typography, Tabs, Card, Row, Col, Tag, Divider } from "antd";
 import { Activity } from "../../activity";
 import { useAttachments } from "../../attachments";
 import { Select } from 'antd';
 import { useRouter } from 'next/navigation';
+import { TasksTab } from "../../tasks";
 
 const { Text, Title } = Typography;
 
@@ -19,7 +20,6 @@ interface Audit {
 export default function AuditShow() {
   const router = useRouter();
   const params = useParams();
-  console.log("Audit ID:", params.id);
 
   const { queryResult } = useShow({
     resource: "audits",
@@ -40,19 +40,9 @@ export default function AuditShow() {
 
   const { renderAttachments } = useAttachments(params.id as string);
 
-  const { data: historyData, isLoading: historyLoading } = useList({
-    resource: "change_history",
-    filters: [
-      { field: "table_name", operator: "eq", value: "audits" },
-      { field: "record_id", operator: "eq", value: params.id },
-    ],
-    sorters: [{ field: "created_at", order: "desc" }],
-  });
-
   const userIds = [
-    ...(historyData?.data?.map((history) => history.changed_by) || []),
-    record?.audit_partner,
-    record?.engagement_lead,
+    record?.auditor_id,
+    record?.auditee_id,
   ].filter(Boolean);
 
   const { data: userData, isLoading: userLoading } = useMany({
@@ -63,41 +53,78 @@ export default function AuditShow() {
     },
   });
 
+  const { data: companyData, isLoading: companyLoading } = useOne({
+    resource: "company_info",
+    id: record?.company_info_id || "",
+    queryOptions: {
+      enabled: !!record?.company_info_id,
+    },
+  });
+
+  const getWorkflowStatusColor = (status: string) => {
+    switch (status) {
+      case 'Planned':
+        return 'blue';
+      case 'In Progress':
+        return 'orange';
+      case 'Reporting':
+        return 'purple';
+      case 'Closed':
+        return 'green';
+      default:
+        return 'default';
+    }
+  };
+
   const renderRightSideBox = () => (
     <Card title="Contextual Information" style={{ marginBottom: 20, borderRadius: 8 }}>
       <Row gutter={[16, 24]}>
         <Col span={24}>
-          <Title level={4}>Ownership</Title>
+          <Title level={5}>Company Info</Title>
+          <Text>{companyData?.data?.entity || "Not assigned"}</Text>
         </Col>
         <Col span={24}>
           <Title level={5}>Audit Partner</Title>
-          <Text>{record?.audit_partner || "Not assigned"}</Text>
+          <Text>{userData?.data?.find(user => user.id === record?.auditor_id)?.full_name || "Not assigned"}</Text>
         </Col>
         <Col span={24}>
           <Title level={5}>Engagement Lead</Title>
-          <Text>{record?.engagement_lead || "Not assigned"}</Text>
+          <Text>{userData?.data?.find(user => user.id === record?.auditee_id)?.full_name || "Not assigned"}</Text>
         </Col>
         <Divider />
         <Col span={24}>
-          <Title level={4}>Dates</Title>
+          <Title level={5}>Dates</Title>
         </Col>
         <Col span={12}>
-          <Title level={5}>Created At</Title>
-          <DateField value={record?.created_at} />
+          <Text>Planned Start:</Text>
+          <DateField value={record?.planned_start_date} />
         </Col>
         <Col span={12}>
-          <Title level={5}>Updated At</Title>
-          <DateField value={record?.updated_at} />
+          <Text>Planned End:</Text>
+          <DateField value={record?.planned_end_date} />
+        </Col>
+        <Col span={12}>
+          <Text>Actual Start:</Text>
+          <DateField value={record?.actual_start_date} />
+        </Col>
+        <Col span={12}>
+          <Text>Actual End:</Text>
+          <DateField value={record?.actual_end_date} />
         </Col>
         <Divider />
         <Col span={24}>
-          <Title level={4}>Status</Title>
-        </Col>
-        <Col span={24}>
-          <Title level={5}>Workflow Status</Title>
+          <Title level={5}>Status</Title>
           <Tag color={getWorkflowStatusColor(record?.workflow_status)}>
             {record?.workflow_status}
           </Tag>
+        </Col>
+        <Col span={12}>
+          <Text>Created At:</Text>
+          <DateField value={record?.created_at} />
+        </Col>
+        <Col span={12}>
+          <Text>Updated At:</Text>
+          <DateField value={record?.updated_at} />
         </Col>
       </Row>
     </Card>
@@ -125,44 +152,17 @@ export default function AuditShow() {
             <Title level={4}>Related Circulars</Title>
             <Text>{record?.related_circulars?.join(", ")}</Text>
           </Col>
-        </Row>
-      ),
-    },
-    {
-      key: "2",
-      label: "Dates",
-      children: (
-        <Row gutter={[0, 24]}>
-          <Col span={12}>
-            <Title level={4}>Planned Start Date</Title>
-            <DateField value={record?.planned_start_date} />
-          </Col>
-          <Col span={12}>
-            <Title level={4}>Planned End Date</Title>
-            <DateField value={record?.planned_end_date} />
-          </Col>
-          <Col span={12}>
-            <Title level={4}>Actual Start Date</Title>
-            <DateField value={record?.actual_start_date} />
-          </Col>
-          <Col span={12}>
-            <Title level={4}>Actual End Date</Title>
-            <DateField value={record?.actual_end_date} />
-          </Col>
-        </Row>
-      ),
-    },
-    {
-      key: "3",
-      label: "Stakeholders",
-      children: (
-        <Row gutter={[0, 24]}>
           <Col span={24}>
             <Title level={4}>Key Stakeholders</Title>
             <Text>{record?.key_stakeholders?.join(", ")}</Text>
           </Col>
         </Row>
       ),
+    },
+    {
+      key: "2",
+      label: "Tasks",
+      children: <TasksTab auditId={params.id as string} />,
     },
   ];
 
@@ -207,19 +207,4 @@ export default function AuditShow() {
       </Row>
     </Show>
   );
-}
-
-function getWorkflowStatusColor(status: string | undefined) {
-  switch (status) {
-    case 'Planned':
-      return 'blue';
-    case 'In Progress':
-      return 'orange';
-    case 'Reporting':
-      return 'purple';
-    case 'Closed':
-      return 'green';
-    default:
-      return 'default';
-  }
 }

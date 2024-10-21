@@ -21,8 +21,11 @@ export default function AuthorityDocumentsList() {
     "type",
     "identifier",
     "issuing_body",
+    "version",
     "publication_date",
+    "description",
     "created_at",
+    "updated_at",
   ]);
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -120,7 +123,11 @@ export default function AuthorityDocumentsList() {
             mode="multiple"
             placeholder="Select Type"
             {...typeSelectProps}
-          />
+          >
+            <Select.Option value="Circular">Circular</Select.Option>
+            <Select.Option value="Certification">Certification</Select.Option>
+            <Select.Option value="Standard">Standard</Select.Option>
+          </Select>
         </FilterDropdown>
       ),
     },

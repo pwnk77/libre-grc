@@ -3,7 +3,7 @@
 import { Show, MarkdownField, DateField, EditButton } from "@refinedev/antd";
 import { useShow, useMany, useList } from "@refinedev/core";
 import { useParams } from "next/navigation";
-import { Typography, Tabs, Card, Row, Col, Tag, Divider } from "antd";
+import { Typography, Tabs, Card, Row, Col, Tag, Divider, List, Table } from "antd";
 import { Activity } from "../../activity";
 import { useAttachments } from "../../attachments";
 import { TasksTab } from "../../tasks";
@@ -32,10 +32,9 @@ export default function ControlShow() {
   });
 
   const userIds = [
-    ...(historyData?.data?.map((history) => history.changed_by) || []),
-    record?.control_owner,
-    record?.process_owner,
-    record?.compliance_spoc,
+    record?.control_owner_id,
+    record?.process_owner_id,
+    record?.compliance_spoc_id,
   ].filter(Boolean);
 
   const { data: userData, isLoading: userLoading } = useMany({
@@ -43,6 +42,30 @@ export default function ControlShow() {
     ids: userIds,
     queryOptions: {
       enabled: userIds.length > 0,
+    },
+  });
+
+  const { data: companyData, isLoading: companyLoading } = useMany({
+    resource: "company_info",
+    ids: record?.company_info_id ? [record.company_info_id] : [],
+    queryOptions: {
+      enabled: !!record?.company_info_id,
+    },
+  });
+
+  const { data: citationsData, isLoading: citationsLoading } = useMany({
+    resource: "citations",
+    ids: record?.citation_ids || [],
+    queryOptions: {
+      enabled: !!record?.citation_ids && record.citation_ids.length > 0,
+    },
+  });
+
+  const { data: authorityDocumentsData, isLoading: authorityDocumentsLoading } = useMany({
+    resource: "authority_documents",
+    ids: citationsData?.data?.map(citation => citation.authority_document_id) || [],
+    queryOptions: {
+      enabled: !!citationsData?.data && citationsData.data.length > 0,
     },
   });
 
@@ -54,15 +77,19 @@ export default function ControlShow() {
         </Col>
         <Col span={24}>
           <Title level={5}>Control Owner</Title>
-          <Text>{userData?.data?.find(u => u.id === record?.control_owner)?.full_name || "Not assigned"}</Text>
+          <Text>{userData?.data?.find(u => u.id === record?.control_owner_id)?.full_name || "Not assigned"}</Text>
         </Col>
         <Col span={24}>
           <Title level={5}>Process Owner</Title>
-          <Text>{userData?.data?.find(u => u.id === record?.process_owner)?.full_name || "Not assigned"}</Text>
+          <Text>{userData?.data?.find(u => u.id === record?.process_owner_id)?.full_name || "Not assigned"}</Text>
         </Col>
         <Col span={24}>
           <Title level={5}>Compliance SPOC</Title>
-          <Text>{userData?.data?.find(u => u.id === record?.compliance_spoc)?.full_name || "Not assigned"}</Text>
+          <Text>{userData?.data?.find(u => u.id === record?.compliance_spoc_id)?.full_name || "Not assigned"}</Text>
+        </Col>
+        <Col span={24}>
+          <Title level={5}>Company</Title>
+          <Text>{companyData?.data?.[0]?.entity || "Not assigned"}</Text>
         </Col>
         <Divider />
         <Col span={24}>
@@ -148,15 +175,15 @@ export default function ControlShow() {
         <Row gutter={[0, 24]}>
           <Col span={24}>
             <Title level={4}>Control Type</Title>
-            <Text>{record?.control_type}</Text>
+            <Tag color={getControlTypeColor(record?.control_type)}>{record?.control_type}</Tag>
           </Col>
           <Col span={24}>
             <Title level={4}>Control Frequency</Title>
-            <Text>{record?.control_frequency}</Text>
+            <Tag color={getControlFrequencyColor(record?.control_frequency)}>{record?.control_frequency}</Tag>
           </Col>
           <Col span={24}>
             <Title level={4}>Control Design</Title>
-            <Text>{record?.control_design}</Text>
+            <Tag color={getControlDesignColor(record?.control_design)}>{record?.control_design}</Tag>
           </Col>
           <Col span={24}>
             <Title level={4}>Technological Enabler</Title>
@@ -164,29 +191,55 @@ export default function ControlShow() {
           </Col>
           <Col span={24}>
             <Title level={4}>Management Level</Title>
-            <Text>{record?.management_level}</Text>
+            <Tag color={getManagementLevelColor(record?.management_level)}>{record?.management_level}</Tag>
           </Col>
         </Row>
       ),
     },
     {
       key: "4",
-      label: "Framework",
+      label: "Citations",
       children: (
-        <Row gutter={[0, 24]}>
-          <Col span={24}>
-            <Title level={4}>Framework Name</Title>
-            <Text>{record?.framework_name}</Text>
-          </Col>
-          <Col span={24}>
-            <Title level={4}>Framework Version</Title>
-            <Text>{record?.framework_version}</Text>
-          </Col>
-          <Col span={24}>
-            <Title level={4}>Framework Description</Title>
-            <MarkdownField value={record?.framework_description} />
-          </Col>
-        </Row>
+        <Table
+          dataSource={citationsData?.data || []}
+          loading={citationsLoading || authorityDocumentsLoading}
+          rowKey="id"
+          pagination={false}
+        >
+          <Table.Column
+            title="Citation Text"
+            dataIndex="citation_text"
+            key="citation_text"
+          />
+          <Table.Column
+            title="Reference Identifier"
+            dataIndex="reference_identifier"
+            key="reference_identifier"
+          />
+          <Table.Column
+            title="Authority Document"
+            dataIndex="authority_document_id"
+            key="authority_document_id"
+            render={(authorityDocumentId) => {
+              const authorityDocument = authorityDocumentsData?.data?.find(
+                (doc) => doc.id === authorityDocumentId
+              );
+              return authorityDocument ? authorityDocument.title : "N/A";
+            }}
+          />
+          <Table.Column
+            title="Created At"
+            dataIndex="created_at"
+            key="created_at"
+            render={(value) => <DateField value={value} format="LLL" />}
+          />
+          <Table.Column
+            title="Updated At"
+            dataIndex="updated_at"
+            key="updated_at"
+            render={(value) => <DateField value={value} format="LLL" />}
+          />
+        </Table>
       ),
     },
     {
@@ -254,5 +307,63 @@ function getWorkflowStatusColor(status: string | undefined) {
       return 'gray';
     default:
       return 'blue';
+  }
+}
+
+function getControlTypeColor(type: string | undefined) {
+  switch (type) {
+    case 'Preventive':
+      return 'blue';
+    case 'Detective':
+      return 'green';
+    case 'Corrective':
+      return 'orange';
+    default:
+      return 'default';
+  }
+}
+
+function getControlFrequencyColor(frequency: string | undefined) {
+  switch (frequency) {
+    case 'Continuous':
+      return 'green';
+    case 'Daily':
+      return 'blue';
+    case 'Weekly':
+      return 'cyan';
+    case 'Monthly':
+      return 'purple';
+    case 'Quarterly':
+      return 'magenta';
+    case 'Annually':
+      return 'red';
+    default:
+      return 'default';
+  }
+}
+
+function getControlDesignColor(design: string | undefined) {
+  switch (design) {
+    case 'Manual':
+      return 'orange';
+    case 'Automated':
+      return 'green';
+    case 'Hybrid':
+      return 'blue';
+    default:
+      return 'default';
+  }
+}
+
+function getManagementLevelColor(level: string | undefined) {
+  switch (level) {
+    case 'Strategic':
+      return 'red';
+    case 'Tactical':
+      return 'blue';
+    case 'Operational':
+      return 'green';
+    default:
+      return 'default';
   }
 }

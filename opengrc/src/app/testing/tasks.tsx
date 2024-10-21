@@ -1,11 +1,11 @@
 import React, { useState } from "react";
 import { useForm, useTable, useSelect } from "@refinedev/antd";
 import { Form, Input, DatePicker, Button, Table, Space, Select, Popconfirm, message } from "antd";
-import { useCreate, useUpdate, useDelete, useGetIdentity } from "@refinedev/core";
+import { useCreate, useUpdate, useDelete } from "@refinedev/core";
 import { DeleteOutlined, EditOutlined, SaveOutlined, CloseOutlined } from "@ant-design/icons";
 import dayjs from 'dayjs';
 
-export const TasksTab: React.FC<{ controlId: string }> = ({ controlId }) => {
+export const TasksTab: React.FC<{ testingId: string }> = ({ testingId }) => {
   const [form] = Form.useForm();
 
   const { formProps, saveButtonProps, queryResult } = useForm({
@@ -20,12 +20,12 @@ export const TasksTab: React.FC<{ controlId: string }> = ({ controlId }) => {
         {
           field: "related_entity_id",
           operator: "eq",
-          value: controlId,
+          value: testingId,
         },
         {
           field: "entity_type",
           operator: "eq",
-          value: "controls",
+          value: "testing",
         },
       ],
     },
@@ -37,7 +37,6 @@ export const TasksTab: React.FC<{ controlId: string }> = ({ controlId }) => {
   const { mutate: createTask, isLoading: isCreating } = useCreate();
   const { mutate: updateTask } = useUpdate();
   const { mutate: deleteTask } = useDelete();
-  const { data: identity } = useGetIdentity<{ id: string }>();
 
   const { selectProps: assigneeSelectProps } = useSelect({
     resource: "users",
@@ -91,11 +90,10 @@ export const TasksTab: React.FC<{ controlId: string }> = ({ controlId }) => {
       resource: "tasks",
       values: {
         ...values,
-        related_entity_id: controlId,
-        entity_type: "controls",
-        task_type: "Control",
+        related_entity_id: testingId,
+        entity_type: "testing",
+        task_type: "Testing",
         due_date: values.due_date ? values.due_date.format('YYYY-MM-DD') : null,
-        created_by_id: identity?.id,
       },
     }, {
       onSuccess: () => {

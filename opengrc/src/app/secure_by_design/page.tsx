@@ -10,17 +10,16 @@ import {
   useSelect,
   CreateButton,
 } from "@refinedev/antd";
-import { BaseKey, BaseRecord, CrudFilters, useNavigation } from "@refinedev/core";
-import { Space, Table, Checkbox, Button, Popover, Select, Input } from "antd";
+import { BaseKey, BaseRecord, CrudFilters, useNavigation, useMany } from "@refinedev/core";
+import { Space, Table, Checkbox, Button, Popover, Select, Input, Tag } from "antd";
 import { useState, useEffect } from "react";
 import { SettingOutlined } from "@ant-design/icons";
 
-export default function AuditsList() {
+export default function SecureByDesignList() {
   const [selectedColumns, setSelectedColumns] = useState<string[]>([
     "product_name",
     "description",
     "product_type",
-    "line_of_business",
     "expected_go_live_date",
     "workflow_status",
     "created_at",
@@ -106,6 +105,29 @@ export default function AuditsList() {
     optionValue: "workflow_status",
   });
 
+  const { data: companyData, isLoading: companyLoading } = useMany({
+    resource: "company_info",
+    ids: tableProps?.dataSource?.map((item: any) => item.company_info_id) || [],
+    queryOptions: {
+      enabled: !!tableProps?.dataSource,
+    },
+  });
+
+  const getWorkflowStatusColor = (status: string) => {
+    switch (status) {
+      case 'Initiation':
+        return 'blue';
+      case 'Design Review':
+        return 'orange';
+      case 'Implementation':
+        return 'green';
+      case 'Verification':
+        return 'purple';
+      default:
+        return 'default';
+    }
+  };
+
   const allColumns = [
     {
       dataIndex: "product_name",
@@ -132,10 +154,6 @@ export default function AuditsList() {
           />
         </FilterDropdown>
       ),
-    },
-    {
-      dataIndex: "line_of_business",
-      title: "Line of Business",
     },
     {
       dataIndex: "expected_go_live_date",
@@ -184,6 +202,9 @@ export default function AuditsList() {
           />
         </FilterDropdown>
       ),
+      render: (value: string) => (
+        <Tag color={getWorkflowStatusColor(value)}>{value}</Tag>
+      ),
     },
     {
       dataIndex: "created_at",
@@ -196,6 +217,14 @@ export default function AuditsList() {
       title: "Updated At",
       render: (value: any) => <DateField value={value} />,
       sorter: true,
+    },
+    {
+      dataIndex: "company_info_id",
+      title: "Company",
+      render: (value: string) => {
+        const company = companyData?.data?.find(item => item.id === value);
+        return company ? company.entity : 'N/A';
+      },
     },
   ];
 
@@ -265,6 +294,7 @@ export default function AuditsList() {
       <Table 
         {...tableProps} 
         rowKey="id"
+        loading={tableProps.loading || companyLoading}
       >
         {renderColumns()}
       </Table>

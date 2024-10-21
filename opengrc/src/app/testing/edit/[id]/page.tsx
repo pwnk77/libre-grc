@@ -1,14 +1,16 @@
 "use client";
 
 import { Edit, useForm, useSelect } from "@refinedev/antd";
-import { useMany, useCreate, useGetIdentity } from "@refinedev/core";
+import { useMany, useCreate, useGetIdentity, useOne } from "@refinedev/core";
 import { useParams } from "next/navigation";
-import { Form, Input, Select, DatePicker, Row, Col, Card } from "antd";
+import { Form, Input, Select, DatePicker, Row, Col, Card, Typography } from "antd";
 import { Activity } from "../../activity";
 import { useAttachments } from "../../attachments";
 import dayjs from 'dayjs';
+import { TasksTab } from "../../tasks";
 
 const { TextArea } = Input;
+const { Text, Paragraph } = Typography;
 
 export default function TestingEdit() {
   const params = useParams();
@@ -60,6 +62,39 @@ export default function TestingEdit() {
     }
   };
 
+  const { data: companyInfoData, isLoading: companyInfoLoading } = useOne({
+    resource: "company_info",
+    id: record?.company_info_id || "",
+    queryOptions: {
+      enabled: !!record?.company_info_id,
+    },
+  });
+
+  const { data: evidenceProviderData, isLoading: evidenceProviderLoading } = useOne({
+    resource: "users",
+    id: record?.evidence_provider_id || "",
+    queryOptions: {
+      enabled: !!record?.evidence_provider_id,
+    },
+  });
+
+  const { data: complianceManagerData, isLoading: complianceManagerLoading } = useOne({
+    resource: "users",
+    id: record?.compliance_manager_id || "",
+    queryOptions: {
+      enabled: !!record?.compliance_manager_id,
+    },
+  });
+
+  const tabItems = [
+    // ... other tab items
+    {
+      key: "tasks",
+      label: "Tasks",
+      children: <TasksTab testingId={params.id as string} />,
+    },
+  ];
+
   return (
     <Edit saveButtonProps={saveButtonProps}>
       <Form 
@@ -75,22 +110,13 @@ export default function TestingEdit() {
           <Col span={18}>
             <Card>
               <Row gutter={24}>
-                <Col span={12}>
+                <Col span={24}>
                   <Form.Item
                     name="control_id"
                     label="Related Control"
                     rules={[{ required: true }]}
                   >
                     <Select {...controlSelectProps} />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item
-                    name="test_date"
-                    label="Test Date"
-                    rules={[{ required: true }]}
-                  >
-                    <DatePicker style={{ width: '100%' }} />
                   </Form.Item>
                 </Col>
               </Row>
@@ -105,7 +131,16 @@ export default function TestingEdit() {
                 name="audit_strategy"
                 label="Audit Strategy"
               >
-                <TextArea rows={4} />
+                <Select
+                  style={{ width: '100%' }}
+                  options={[
+                    { value: 'Substantive', label: 'Substantive' },
+                    { value: 'Control-based', label: 'Control-based' },
+                    { value: 'Combined', label: 'Combined' },
+                    { value: 'Risk-based', label: 'Risk-based' },
+                    { value: 'Compliance-based', label: 'Compliance-based' },
+                  ]}
+                />
               </Form.Item>
               <Form.Item
                 name="test_of_design"
@@ -125,8 +160,34 @@ export default function TestingEdit() {
               >
                 <TextArea rows={4} />
               </Form.Item>
-              <Row gutter={24}>
-                <Col span={12}>
+              <Form.Item
+                name="notes"
+                label="Notes"
+              >
+                <TextArea rows={4} />
+              </Form.Item>
+            </Card>
+            <Card title="Attachments" style={{ marginTop: 20, borderRadius: 8 }}>
+              {renderAttachments()}
+            </Card>
+            <Activity parentId={params.id as string} />
+          </Col>
+          <Col span={6}>
+            <Card title="Contextual Information">
+              <Row gutter={[0, 16]}>
+                <Col span={24}>
+                  <Text strong>Company Info:</Text>
+                  <Paragraph>{companyInfoData?.data?.entity || "N/A"}</Paragraph>
+                </Col>
+                <Col span={24}>
+                  <Text strong>Evidence Provider:</Text>
+                  <Paragraph>{evidenceProviderData?.data?.full_name || "N/A"}</Paragraph>
+                </Col>
+                <Col span={24}>
+                  <Text strong>Compliance Manager:</Text>
+                  <Paragraph>{complianceManagerData?.data?.full_name || "N/A"}</Paragraph>
+                </Col>
+                <Col span={24}>
                   <Form.Item
                     name="compliance_status"
                     label="Compliance Status"
@@ -142,7 +203,7 @@ export default function TestingEdit() {
                     />
                   </Form.Item>
                 </Col>
-                <Col span={12}>
+                <Col span={24}>
                   <Form.Item
                     name="workflow_status"
                     label="Workflow Status"
@@ -158,28 +219,26 @@ export default function TestingEdit() {
                     />
                   </Form.Item>
                 </Col>
+                <Col span={24}>
+                  <Form.Item
+                    name="tester"
+                    label="Tester"
+                    rules={[{ required: true }]}
+                  >
+                    <Input />
+                  </Form.Item>
+                </Col>
+                <Col span={24}>
+                  <Form.Item
+                    name="test_date"
+                    label="Test Date"
+                    rules={[{ required: true }]}
+                  >
+                    <DatePicker style={{ width: '100%' }} />
+                  </Form.Item>
+                </Col>
               </Row>
-              <Form.Item
-                name="tester"
-                label="Tester"
-                rules={[{ required: true }]}
-              >
-                <Input />
-              </Form.Item>
-              <Form.Item
-                name="notes"
-                label="Notes"
-              >
-                <TextArea rows={4} />
-              </Form.Item>
             </Card>
-            <Card title="Attachments" style={{ marginTop: 20, borderRadius: 8 }}>
-              {renderAttachments()}
-            </Card>
-            <Activity parentId={params.id as string} />
-          </Col>
-          <Col span={6}>
-            {/* You can add additional information or metadata here if needed */}
           </Col>
         </Row>
       </Form>
