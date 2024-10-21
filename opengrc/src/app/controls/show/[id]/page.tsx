@@ -6,6 +6,8 @@ import { useParams } from "next/navigation";
 import { Typography, Tabs, Card, Row, Col, Tag, Divider } from "antd";
 import { Activity } from "../../activity";
 import { useAttachments } from "../../attachments";
+import { TasksTab } from "../../tasks";
+import { AssetsTab } from "../../assets";
 
 const { Title, Text } = Typography;
 
@@ -186,6 +188,16 @@ export default function ControlShow() {
           </Col>
         </Row>
       ),
+    },
+    {
+      key: "5",
+      label: "Tasks",
+      children: <TasksTab controlId={params.id as string} />,
+    },
+    {
+      key: "6",
+      label: "Assets",
+      children: <AssetsTab controlId={params.id as string} />,
     },
   ];
 

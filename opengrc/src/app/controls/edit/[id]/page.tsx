@@ -7,6 +7,8 @@ import { Form, Input, Select, Tabs, Card, Row, Col, Typography, DatePicker } fro
 import { Activity } from "../../activity";
 import { useAttachments } from "../../attachments";
 import dayjs from 'dayjs'; // Import dayjs
+import { TasksTab } from "../../tasks";
+import { AssetsTab } from "../../assets";
 
 const { TextArea } = Input;
 const { Title } = Typography;
@@ -172,6 +174,16 @@ export default function ControlEdit() {
           </Form.Item>
         </>
       ),
+    },
+    {
+      key: "5",
+      label: "Tasks",
+      children: <TasksTab controlId={params.id as string} />,
+    },
+    {
+      key: "6",
+      label: "Assets",
+      children: <AssetsTab controlId={params.id as string} />,
     },
   ];
 

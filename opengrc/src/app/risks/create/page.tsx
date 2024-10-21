@@ -46,7 +46,7 @@ export default function RiskCreate() {
           resource: "change_history",
           values: {
             table_name: "risks",
-            record_id: response.data.id,
+            record_id: (response as any)?.data?.id,
             action: "Created",
             change_details: JSON.stringify(values),
             changed_by: identity?.id,

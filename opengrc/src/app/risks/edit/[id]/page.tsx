@@ -3,7 +3,7 @@
 import { Edit, useForm, useSelect } from "@refinedev/antd";
 import { useMany, useCreate, useGetIdentity } from "@refinedev/core";
 import { useParams } from "next/navigation";
-import { Form, Input, Select, DatePicker, Tabs, Card, Row, Col, Typography, Divider } from "antd";
+import { Form, Input, Select, DatePicker, Tabs, Card, Row, Col, Typography, Divider, Space } from "antd";
 import { Activity } from "../../activity";
 import { useAttachments } from "../../attachments";
 import dayjs from 'dayjs';
@@ -157,215 +157,221 @@ export default function RiskEdit() {
       >
         <Row gutter={24}>
           <Col span={18}>
-            <Tabs 
-              activeKey={activeTab}
-              onChange={(key) => setActiveTab(key)}
-            >
-              <TabPane tab="Basic Information" key="1">
-                <Row gutter={24}>
-                  <Col span={12}>
-                    <Form.Item
-                      name="risk_id"
-                      label="Risk ID"
-                      rules={[{ required: true }]}
-                    >
-                      <Input />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item
-                      name="risk_summary"
-                      label="Risk Summary"
-                      rules={[{ required: true }]}
-                    >
-                      <Input />
-                    </Form.Item>
-                  </Col>
-                </Row>
-                <Form.Item
-                  name="description"
-                  label="Description"
-                >
-                  <TextArea rows={4} />
-                </Form.Item>
-                <Row gutter={24}>
-                  <Col span={8}>
-                    <Form.Item
-                      name="risk_owner_id"
-                      label="Risk Owner"
-                    >
-                      <Select {...riskOwnerSelectProps} />
-                    </Form.Item>
-                  </Col>
-                  <Col span={8}>
-                    <Form.Item
-                      name="risk_reporter_id"
-                      label="Risk Reporter"
-                    >
-                      <Select {...riskReporterSelectProps} />
-                    </Form.Item>
-                  </Col>
-                  <Col span={8}>
-                    <Form.Item
-                      name="risk_manager_id"
-                      label="Risk Manager"
-                    >
-                      <Select {...riskManagerSelectProps} />
-                    </Form.Item>
-                  </Col>
-                </Row>
-              </TabPane>
-              <TabPane tab="Risk Assessment" key="2">
-                <Row gutter={24}>
-                  <Col span={12}>
-                    <Form.Item
-                      name="impact_type"
-                      label="Impact Type"
-                    >
-                      <Select
-                        options={[
-                          { value: 'Financial', label: 'Financial' },
-                          { value: 'Operational', label: 'Operational' },
-                          { value: 'Reputational', label: 'Reputational' },
-                          { value: 'Compliance', label: 'Compliance' },
-                        ]}
-                      />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item
-                      name="impact"
-                      label="Impact"
-                      rules={[{ required: true }]}
-                    >
-                      <Select
-                        options={[
-                          { value: 'Critical', label: 'Critical' },
-                          { value: 'High', label: 'High' },
-                          { value: 'Medium', label: 'Medium' },
-                          { value: 'Low', label: 'Low' },
-                        ]}
-                      />
-                    </Form.Item>
-                  </Col>
-                </Row>
-                <Row gutter={24}>
-                  <Col span={12}>
-                    <Form.Item
-                      name="likelihood"
-                      label="Likelihood"
-                      rules={[{ required: true }]}
-                    >
-                      <Select
-                        options={[
-                          { value: 'Rare', label: 'Rare' },
-                          { value: 'Slightly Likely', label: 'Slightly Likely' },
-                          { value: 'Likely', label: 'Likely' },
-                          { value: 'Almost Certain', label: 'Almost Certain' },
-                        ]}
-                      />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item
-                      name="inherent_risk_level"
-                      label="Inherent Risk Level"
-                      rules={[{ required: true }]}
-                    >
-                      <Select
-                        options={[
-                          { value: 'Critical', label: 'Critical' },
-                          { value: 'High', label: 'High' },
-                          { value: 'Medium', label: 'Medium' },
-                          { value: 'Low', label: 'Low' },
-                        ]}
-                      />
-                    </Form.Item>
-                  </Col>
-                </Row>
-              </TabPane>
-              <TabPane tab="Risk Treatment" key="3">
-                <Form.Item
-                  name="risk_response"
-                  label="Risk Response"
-                  rules={[{ required: true }]}
-                >
-                  <Select
-                    options={[
-                      { value: 'Treat', label: 'Treat' },
-                      { value: 'Transfer', label: 'Transfer' },
-                      { value: 'Terminate', label: 'Terminate' },
-                      { value: 'Accept', label: 'Accept' },
-                    ]}
-                  />
-                </Form.Item>
-                <Form.Item
-                  name="risk_due_date"
-                  label="Risk Due Date"
-                >
-                  <DatePicker style={{ width: '100%' }} />
-                </Form.Item>
-                <Form.Item
-                  name="residual_risk_level"
-                  label="Residual Risk Level"
-                >
-                  <Select
-                    options={[
-                      { value: 'Critical', label: 'Critical' },
-                      { value: 'High', label: 'High' },
-                      { value: 'Medium', label: 'Medium' },
-                      { value: 'Low', label: 'Low' },
-                    ]}
-                  />
-                </Form.Item>
-                <Form.Item
-                  name="compensating_controls"
-                  label="Compensating Controls"
-                >
-                  <TextArea rows={4} />
-                </Form.Item>
-                <Form.Item
-                  name="mitigating_controls"
-                  label="Mitigating Controls"
-                >
-                  <TextArea rows={4} />
-                </Form.Item>
-                <Form.Item
-                  name="risk_acceptance_justifications"
-                  label="Risk Acceptance Justifications"
-                >
-                  <TextArea rows={4} />
-                </Form.Item>
-              </TabPane>
-              <TabPane tab="Tasks" key="4">
-                <TasksTab riskId={params.id as string} />
-              </TabPane>
-              <TabPane tab="Assets" key="5">
-                <AssetsTab riskId={params.id as string} />
-              </TabPane>
-            </Tabs>
-            <Form.Item
-              name="workflow_status"
-              label="Workflow Status"
-              rules={[{ required: true }]}
-            >
-              <Select
-                options={[
-                  { value: 'Identified', label: 'Identified' },
-                  { value: 'Assessed', label: 'Assessed' },
-                  { value: 'Treated', label: 'Treated' },
-                  { value: 'Monitored', label: 'Monitored' },
-                ]}
-              />
-            </Form.Item>
-            {activeTab !== "4" && activeTab !== "5" && (
-              <>
-                <Card title="Attachments" style={{ marginTop: 20, borderRadius: 8 }}>
-                  {renderAttachments()}
-                </Card>
-                <Activity parentId={params.id as string} />
-              </>
-            )}
+            <Space direction="vertical" size="large" style={{ width: '100%' }}>
+              <Tabs 
+                activeKey={activeTab}
+                onChange={(key) => setActiveTab(key)}
+              >
+                <TabPane tab="Basic Information" key="1">
+                  <Row gutter={24}>
+                    <Col span={12}>
+                      <Form.Item
+                        name="risk_id"
+                        label="Risk ID"
+                        rules={[{ required: true }]}
+                      >
+                        <Input />
+                      </Form.Item>
+                    </Col>
+                    <Col span={12}>
+                      <Form.Item
+                        name="risk_summary"
+                        label="Risk Summary"
+                        rules={[{ required: true }]}
+                      >
+                        <Input />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+                  <Form.Item
+                    name="description"
+                    label="Description"
+                  >
+                    <TextArea rows={4} />
+                  </Form.Item>
+                  <Row gutter={24}>
+                    <Col span={8}>
+                      <Form.Item
+                        name="risk_owner_id"
+                        label="Risk Owner"
+                      >
+                        <Select {...riskOwnerSelectProps} />
+                      </Form.Item>
+                    </Col>
+                    <Col span={8}>
+                      <Form.Item
+                        name="risk_reporter_id"
+                        label="Risk Reporter"
+                      >
+                        <Select {...riskReporterSelectProps} />
+                      </Form.Item>
+                    </Col>
+                    <Col span={8}>
+                      <Form.Item
+                        name="risk_manager_id"
+                        label="Risk Manager"
+                      >
+                        <Select {...riskManagerSelectProps} />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+                </TabPane>
+                <TabPane tab="Risk Assessment" key="2">
+                  <Row gutter={24}>
+                    <Col span={12}>
+                      <Form.Item
+                        name="impact_type"
+                        label="Impact Type"
+                      >
+                        <Select
+                          options={[
+                            { value: 'Financial', label: 'Financial' },
+                            { value: 'Operational', label: 'Operational' },
+                            { value: 'Reputational', label: 'Reputational' },
+                            { value: 'Compliance', label: 'Compliance' },
+                          ]}
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col span={12}>
+                      <Form.Item
+                        name="impact"
+                        label="Impact"
+                        rules={[{ required: true }]}
+                      >
+                        <Select
+                          options={[
+                            { value: 'Critical', label: 'Critical' },
+                            { value: 'High', label: 'High' },
+                            { value: 'Medium', label: 'Medium' },
+                            { value: 'Low', label: 'Low' },
+                          ]}
+                        />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+                  <Row gutter={24}>
+                    <Col span={12}>
+                      <Form.Item
+                        name="likelihood"
+                        label="Likelihood"
+                        rules={[{ required: true }]}
+                      >
+                        <Select
+                          options={[
+                            { value: 'Rare', label: 'Rare' },
+                            { value: 'Slightly Likely', label: 'Slightly Likely' },
+                            { value: 'Likely', label: 'Likely' },
+                            { value: 'Almost Certain', label: 'Almost Certain' },
+                          ]}
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col span={12}>
+                      <Form.Item
+                        name="inherent_risk_level"
+                        label="Inherent Risk Level"
+                        rules={[{ required: true }]}
+                      >
+                        <Select
+                          options={[
+                            { value: 'Critical', label: 'Critical' },
+                            { value: 'High', label: 'High' },
+                            { value: 'Medium', label: 'Medium' },
+                            { value: 'Low', label: 'Low' },
+                          ]}
+                        />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+                </TabPane>
+                <TabPane tab="Risk Treatment" key="3">
+                  <Form.Item
+                    name="risk_response"
+                    label="Risk Response"
+                    rules={[{ required: true }]}
+                  >
+                    <Select
+                      options={[
+                        { value: 'Treat', label: 'Treat' },
+                        { value: 'Transfer', label: 'Transfer' },
+                        { value: 'Terminate', label: 'Terminate' },
+                        { value: 'Accept', label: 'Accept' },
+                      ]}
+                    />
+                  </Form.Item>
+                  <Form.Item
+                    name="risk_due_date"
+                    label="Risk Due Date"
+                  >
+                    <DatePicker style={{ width: '100%' }} />
+                  </Form.Item>
+                  <Form.Item
+                    name="residual_risk_level"
+                    label="Residual Risk Level"
+                  >
+                    <Select
+                      options={[
+                        { value: 'Critical', label: 'Critical' },
+                        { value: 'High', label: 'High' },
+                        { value: 'Medium', label: 'Medium' },
+                        { value: 'Low', label: 'Low' },
+                      ]}
+                    />
+                  </Form.Item>
+                  <Form.Item
+                    name="compensating_controls"
+                    label="Compensating Controls"
+                  >
+                    <TextArea rows={4} />
+                  </Form.Item>
+                  <Form.Item
+                    name="mitigating_controls"
+                    label="Mitigating Controls"
+                  >
+                    <TextArea rows={4} />
+                  </Form.Item>
+                  <Form.Item
+                    name="risk_acceptance_justifications"
+                    label="Risk Acceptance Justifications"
+                  >
+                    <TextArea rows={4} />
+                  </Form.Item>
+                </TabPane>
+                <TabPane tab="Tasks" key="4">
+                  <TasksTab riskId={params.id as string} />
+                </TabPane>
+                <TabPane tab="Assets" key="5">
+                  <AssetsTab riskId={params.id as string} />
+                </TabPane>
+              </Tabs>
+              <Form.Item
+                name="workflow_status"
+                label="Workflow Status"
+                rules={[{ required: true }]}
+              >
+                <Select
+                  options={[
+                    { value: 'Identified', label: 'Identified' },
+                    { value: 'Assessed', label: 'Assessed' },
+                    { value: 'Treated', label: 'Treated' },
+                    { value: 'Monitored', label: 'Monitored' },
+                  ]}
+                />
+              </Form.Item>
+              <Divider />
+              {activeTab !== "4" && activeTab !== "5" && (
+                <>
+                  <Card title="Attachments" style={{ borderRadius: 8 }}>
+                    {renderAttachments()}
+                  </Card>
+                  <Divider />
+                  <Card title="Activity" style={{ borderRadius: 8 }}>
+                    <Activity parentId={params.id as string} />
+                  </Card>
+                </>
+              )}
+            </Space>
           </Col>
           <Col span={6}>
             {renderRightSideBox()}

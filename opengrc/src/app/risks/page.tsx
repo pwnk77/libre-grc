@@ -19,6 +19,9 @@ export default function RisksList() {
   const [selectedColumns, setSelectedColumns] = useState<string[]>([
     "risk_id",
     "risk_summary",
+    "impact_type",
+    "impact",
+    "likelihood",
     "inherent_risk_level",
     "risk_response",
     "workflow_status",
@@ -136,18 +139,6 @@ export default function RisksList() {
       title: "Description",
     },
     {
-      dataIndex: "risk_analyst",
-      title: "Risk Analyst",
-    },
-    {
-      dataIndex: "risk_reporter",
-      title: "Risk Reporter",
-    },
-    {
-      dataIndex: "line_of_business",
-      title: "Line of Business",
-    },
-    {
       dataIndex: "impact_type",
       title: "Impact Type",
     },
@@ -165,16 +156,6 @@ export default function RisksList() {
       dataIndex: "inherent_risk_level",
       title: "Inherent Risk Level",
       render: (value: string) => <Tag color={getRiskLevelColor(value)}>{value}</Tag>,
-      filterDropdown: (props: any) => (
-        <FilterDropdown {...props}>
-          <Select
-            style={{ minWidth: 200 }}
-            mode="multiple"
-            placeholder="Select Inherent Risk Level"
-            {...inherentRiskLevelSelectProps}
-          />
-        </FilterDropdown>
-      ),
     },
     {
       dataIndex: "risk_response",
@@ -196,16 +177,6 @@ export default function RisksList() {
       dataIndex: "workflow_status",
       title: "Workflow Status",
       render: (value: string) => <Tag color={getWorkflowStatusColor(value)}>{value}</Tag>,
-      filterDropdown: (props: any) => (
-        <FilterDropdown {...props}>
-          <Select
-            style={{ minWidth: 200 }}
-            mode="multiple"
-            placeholder="Select Workflow Status"
-            {...workflowStatusSelectProps}
-          />
-        </FilterDropdown>
-      ),
     },
     {
       dataIndex: "created_at",
