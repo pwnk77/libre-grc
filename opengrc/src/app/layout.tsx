@@ -13,7 +13,7 @@ import { ColorModeContextProvider } from "@contexts/color-mode";
 import { authProviderClient } from "@providers/auth-provider";
 import { dataProvider } from "@providers/data-provider";
 import "@refinedev/antd/dist/reset.css";
-import { AuditOutlined, ControlOutlined, LogoutOutlined, BookOutlined, FileTextOutlined, ExperimentOutlined, AlertOutlined, SafetyOutlined, FileProtectOutlined, DashboardOutlined } from "@ant-design/icons";
+import { AuditOutlined, ControlOutlined, LogoutOutlined, BookOutlined, FileTextOutlined, ExperimentOutlined, AlertOutlined, SafetyOutlined, FileProtectOutlined, DashboardOutlined, HomeOutlined } from "@ant-design/icons";
 
 export const metadata: Metadata = {
   title: "open-grc",
@@ -46,6 +46,14 @@ export default function RootLayout({
                     dataProvider={dataProvider}
                     notificationProvider={useNotificationProvider}
                     resources={[
+                      {
+                        name: "home",
+                        list: "/home",
+                        meta: {
+                          label: "Home",
+                          icon: <HomeOutlined />,
+                        },
+                      },
                       {
                         name: "governance",
                         meta: {

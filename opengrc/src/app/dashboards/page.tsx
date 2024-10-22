@@ -1,236 +1,201 @@
-"use client";
+'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useList } from "@refinedev/core";
-import { Card, Row, Col, Tabs, Statistic, Progress, Table, Select, DatePicker, Button, Space } from "antd";
-import { PieChart, Pie, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { motion } from 'framer-motion';
-
-const { TabPane } = Tabs;
-const { RangePicker } = DatePicker;
+import React from 'react';
+import { useList } from '@refinedev/core';
+import { Card, Row, Col, Statistic, Spin } from 'antd';
+import { Bar, Pie } from '@ant-design/plots';
 
 const DashboardPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState("1");
-  const [filterDate, setFilterDate] = useState<[string, string] | null>(null);
-  const [filterStatus, setFilterStatus] = useState<string | null>(null);
-
-  const { data: controlsData, isLoading: isLoadingControls } = useList({
-    resource: "controls",
-    pagination: { mode: "off" },
+  const { data: authorityDocuments, isLoading: isLoadingAuthDocs } = useList({ 
+    resource: 'authority_documents',
+    pagination: { mode: 'off' }
+  });
+  const { data: citations, isLoading: isLoadingCitations } = useList({ 
+    resource: 'citations',
+    pagination: { mode: 'off' }
+  });
+  const { data: controls, isLoading: isLoadingControls } = useList({ 
+    resource: 'controls',
+    pagination: { mode: 'off' }
+  });
+  const { data: risks, isLoading: isLoadingRisks } = useList({ 
+    resource: 'risks',
+    pagination: { mode: 'off' }
+  });
+  const { data: secureByDesign, isLoading: isLoadingSBD } = useList({ 
+    resource: 'secure_by_design',
+    pagination: { mode: 'off' }
+  });
+  const { data: audits, isLoading: isLoadingAudits } = useList({ 
+    resource: 'audits',
+    pagination: { mode: 'off' }
+  });
+  const { data: policies, isLoading: isLoadingPolicies } = useList({ 
+    resource: 'policies',
+    pagination: { mode: 'off' }
   });
 
-  const { data: testingData, isLoading: isLoadingTesting } = useList({
-    resource: "testing",
-    pagination: { mode: "off" },
-  });
+  const isLoading = isLoadingAuthDocs || isLoadingCitations || isLoadingControls || isLoadingRisks || isLoadingSBD || isLoadingAudits || isLoadingPolicies;
 
-  const { data: auditsData, isLoading: isLoadingAudits } = useList({
-    resource: "audits",
-    pagination: { mode: "off" },
-  });
+  if (isLoading) {
+    return <Spin size="large" />;
+  }
 
-  const { data: citationsData, isLoading: isLoadingCitations } = useList({
-    resource: "citations",
-    pagination: { mode: "off" },
-  });
+  const controlsByDomain = controls?.data?.reduce((acc, control) => {
+    acc[control.domain] = (acc[control.domain] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>) || {};
 
-  const complianceData = [
-    { name: 'Compliant', value: 17 },
-    { name: 'Non-Compliant', value: 6 },
-  ];
+  const controlsByStatus = controls?.data?.reduce((acc, control) => {
+    acc[control.compliance_status] = (acc[control.compliance_status] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>) || {};
 
-  const controlStatusData = [
-    { name: 'Implemented', value: 12 },
-    { name: 'Partially Implemented', value: 8 },
-    { name: 'Not Implemented', value: 3 },
-  ];
+  const controlsByType = controls?.data?.reduce((acc, control) => {
+    acc[control.control_type] = (acc[control.control_type] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>) || {};
 
-  const riskLevelsData = [
-    { name: 'High', value: 5 },
-    { name: 'Medium', value: 10 },
-    { name: 'Low', value: 8 },
-  ];
+  const risksByOwner = risks?.data?.reduce((acc, risk) => {
+    acc[risk.risk_owner_id] = (acc[risk.risk_owner_id] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>) || {};
 
-  const complianceByDomainData = [
-    { name: 'Access Control', value: 85 },
-    { name: 'Asset Management', value: 70 },
-    { name: 'Business Continuity', value: 90 },
-    { name: 'Cryptography', value: 75 },
-    { name: 'Information Security', value: 80 },
-  ];
+  const risksByResponse = risks?.data?.reduce((acc, risk) => {
+    acc[risk.risk_response] = (acc[risk.risk_response] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>) || {};
 
-  const renderCompliancePosture = () => (
-    <Row gutter={[16, 16]}>
-      <Col xs={24} sm={12} md={6}>
-        <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-          <Card>
-            <Statistic
-              title="Overall Compliance"
-              value={74}
-              suffix="%"
-              valueStyle={{ color: '#3f8600' }}
-            />
-            <Progress percent={74} status="active" />
-          </Card>
-        </motion.div>
-      </Col>
-      <Col xs={24} sm={12} md={6}>
-        <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-          <Card>
-            <Statistic
-              title="Controls Implemented"
-              value={20}
-              suffix="/ 23"
-              valueStyle={{ color: '#1890ff' }}
-            />
-            <Progress percent={87} status="active" strokeColor="#1890ff" />
-          </Card>
-        </motion.div>
-      </Col>
-      <Col xs={24} sm={12} md={6}>
-        <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-          <Card>
-            <Statistic
-              title="Open Findings"
-              value={8}
-              valueStyle={{ color: '#cf1322' }}
-            />
-          </Card>
-        </motion.div>
-      </Col>
-      <Col xs={24} sm={12} md={6}>
-        <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-          <Card>
-            <Statistic
-              title="Completed Audits"
-              value={3}
-              valueStyle={{ color: '#096dd9' }}
-            />
-          </Card>
-        </motion.div>
-      </Col>
-      <Col xs={24} md={12}>
-        <Card title="Compliance Status">
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie
-                data={complianceData}
-                cx="50%"
-                cy="50%"
-                outerRadius={80}
-                fill="#8884d8"
-                dataKey="value"
-                label
-              />
-              <Tooltip />
-              <Legend />
-            </PieChart>
-          </ResponsiveContainer>
-        </Card>
-      </Col>
-      <Col xs={24} md={12}>
-        <Card title="Compliance by Domain">
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={complianceByDomainData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="value" fill="#82ca9d" />
-            </BarChart>
-          </ResponsiveContainer>
-        </Card>
-      </Col>
-    </Row>
-  );
+  const auditsByStatus = audits?.data?.reduce((acc, audit) => {
+    acc[audit.workflow_status] = (acc[audit.workflow_status] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>) || {};
 
-  const renderControlPosture = () => (
-    <Row gutter={[16, 16]}>
-      <Col xs={24} md={12}>
-        <Card title="Control Status">
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie
-                data={controlStatusData}
-                cx="50%"
-                cy="50%"
-                outerRadius={80}
-                fill="#8884d8"
-                dataKey="value"
-                label
-              />
-              <Tooltip />
-              <Legend />
-            </PieChart>
-          </ResponsiveContainer>
-        </Card>
-      </Col>
-      <Col xs={24} md={12}>
-        <Card title="Risk Levels">
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={riskLevelsData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="value" fill="#ffc658" />
-            </BarChart>
-          </ResponsiveContainer>
-        </Card>
-      </Col>
-      <Col xs={24}>
-        <Card title="Recent Control Updates">
-          <Table
-            dataSource={controlsData?.data?.slice(0, 5) || []}
-            columns={[
-              { title: 'Control ID', dataIndex: 'control_id', key: 'control_id' },
-              { title: 'Title', dataIndex: 'title', key: 'title' },
-              { title: 'Status', dataIndex: 'status', key: 'status' },
-              { title: 'Last Updated', dataIndex: 'updated_at', key: 'updated_at' },
-            ]}
-            loading={isLoadingControls}
-            pagination={false}
-          />
-        </Card>
-      </Col>
-    </Row>
-  );
+  const sbdByStatus = secureByDesign?.data?.reduce((acc, sbd) => {
+    acc[sbd.workflow_status] = (acc[sbd.workflow_status] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>) || {};
 
-  const renderFilterMenu = () => (
-    <Card style={{ marginBottom: 16 }}>
-      <Space>
-        <RangePicker
-          onChange={(dates, dateStrings) => setFilterDate(dateStrings)}
-        />
-        <Select
-          style={{ width: 200 }}
-          placeholder="Select Status"
-          onChange={(value) => setFilterStatus(value)}
-          allowClear
-        >
-          <Select.Option value="compliant">Compliant</Select.Option>
-          <Select.Option value="non-compliant">Non-Compliant</Select.Option>
-        </Select>
-        <Button type="primary" onClick={() => console.log("Apply filters")}>
-          Apply Filters
-        </Button>
-      </Space>
-    </Card>
-  );
+  const policiesByStatus = policies?.data?.reduce((acc, policy) => {
+    acc[policy.workflow_status] = (acc[policy.workflow_status] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>) || {};
 
   return (
     <div>
-      {renderFilterMenu()}
-      <Tabs activeKey={activeTab} onChange={setActiveTab}>
-        <TabPane tab="Compliance Posture" key="1">
-          {renderCompliancePosture()}
-        </TabPane>
-        <TabPane tab="Control Posture" key="2">
-          {renderControlPosture()}
-        </TabPane>
-      </Tabs>
+      <Row gutter={[16, 16]}>
+        <Col span={4}>
+          <Card>
+            <Statistic title="Authority Documents" value={authorityDocuments?.data?.length || 0} />
+          </Card>
+        </Col>
+        <Col span={4}>
+          <Card>
+            <Statistic title="Citations" value={citations?.data?.length || 0} />
+          </Card>
+        </Col>
+        <Col span={4}>
+          <Card>
+            <Statistic title="Controls" value={controls?.data?.length || 0} />
+          </Card>
+        </Col>
+        <Col span={4}>
+          <Card>
+            <Statistic title="Risks" value={risks?.data?.length || 0} />
+          </Card>
+        </Col>
+        <Col span={4}>
+          <Card>
+            <Statistic title="Secure by Design" value={secureByDesign?.data?.length || 0} />
+          </Card>
+        </Col>
+        <Col span={4}>
+          <Card>
+            <Statistic title="Audits" value={audits?.data?.length || 0} />
+          </Card>
+        </Col>
+      </Row>
+
+      <Row gutter={[16, 16]} style={{ marginTop: '16px' }}>
+        <Col span={8}>
+          <Card title="Controls by Domain">
+            <Bar
+              data={Object.entries(controlsByDomain).map(([domain, count]) => ({ domain, count }))}
+              xField="count"
+              yField="domain"
+            />
+          </Card>
+        </Col>
+        <Col span={8}>
+          <Card title="Control Compliance Status">
+            <Pie
+              data={Object.entries(controlsByStatus).map(([status, count]) => ({ status, count }))}
+              angleField="count"
+              colorField="status"
+            />
+          </Card>
+        </Col>
+        <Col span={8}>
+          <Card title="Control Types">
+            <Pie
+              data={Object.entries(controlsByType).map(([type, count]) => ({ type, count }))}
+              angleField="count"
+              colorField="type"
+            />
+          </Card>
+        </Col>
+      </Row>
+
+      <Row gutter={[16, 16]} style={{ marginTop: '16px' }}>
+        <Col span={12}>
+          <Card title="Risks by Owner">
+            <Bar
+              data={Object.entries(risksByOwner).map(([owner, count]) => ({ owner, count }))}
+              xField="count"
+              yField="owner"
+            />
+          </Card>
+        </Col>
+        <Col span={12}>
+          <Card title="Risk Response">
+            <Pie
+              data={Object.entries(risksByResponse).map(([response, count]) => ({ response, count }))}
+              angleField="count"
+              colorField="response"
+            />
+          </Card>
+        </Col>
+      </Row>
+
+      <Row gutter={[16, 16]} style={{ marginTop: '16px' }}>
+        <Col span={8}>
+          <Card title="Audit Status">
+            <Pie
+              data={Object.entries(auditsByStatus).map(([status, count]) => ({ status, count }))}
+              angleField="count"
+              colorField="status"
+            />
+          </Card>
+        </Col>
+        <Col span={8}>
+          <Card title="Secure by Design Status">
+            <Pie
+              data={Object.entries(sbdByStatus).map(([status, count]) => ({ status, count }))}
+              angleField="count"
+              colorField="status"
+            />
+          </Card>
+        </Col>
+        <Col span={8}>
+          <Card title="Policy Status">
+            <Pie
+              data={Object.entries(policiesByStatus).map(([status, count]) => ({ status, count }))}
+              angleField="count"
+              colorField="status"
+            />
+          </Card>
+        </Col>
+      </Row>
     </div>
   );
 };
