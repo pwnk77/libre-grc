@@ -16,10 +16,10 @@ import "@refinedev/antd/dist/reset.css";
 import { AuditOutlined, ControlOutlined, LogoutOutlined, BookOutlined, FileTextOutlined, ExperimentOutlined, AlertOutlined, SafetyOutlined, FileProtectOutlined, DashboardOutlined, HomeOutlined } from "@ant-design/icons";
 
 export const metadata: Metadata = {
-  title: "open-grc",
+  title: "libre-grc",
   description: "open source grc application",
   icons: {
-    icon: "/favicon.ico",
+    icon: "/libre-grc-icon.ico", // Make sure to add this icon file to your public folder
   },
 };
 
@@ -34,6 +34,12 @@ export default function RootLayout({
 
   return (
     <html lang="en">
+      <head>
+        <link
+          href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap"
+          rel="stylesheet"
+        />
+      </head>
       <body>
         <Suspense>
           <RefineKbarProvider>
@@ -192,7 +198,7 @@ export default function RootLayout({
                       warnWhenUnsavedChanges: true,
                       useNewQueryKeys: false,
                       projectId: "G9nsCS-VM02FI-KfqRO9",
-                      title: { text: "open-grc", icon: <AppIcon /> },
+                      title: { text: "libre-grc", icon: <AppIcon /> },
                     }}
                   >
                     {children}

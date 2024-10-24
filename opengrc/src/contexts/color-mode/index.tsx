@@ -60,10 +60,12 @@ export const ColorModeContextProvider: React.FC<
       }}
     >
       <ConfigProvider
-        // you can change the theme colors here. example: ...RefineThemes.Magenta,
         theme={{
           ...RefineThemes.Blue,
           algorithm: mode === "light" ? defaultAlgorithm : darkAlgorithm,
+          token: {
+            fontFamily: "'Nunito', 'Helvetica Neue', Arial, sans-serif",
+          },
         }}
       >
         <AntdApp>{children}</AntdApp>

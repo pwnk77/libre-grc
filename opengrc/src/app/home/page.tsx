@@ -2,15 +2,18 @@
 
 import React from 'react';
 import { useList, useOne } from '@refinedev/core';
-import { Card, Row, Col, Statistic, Spin, Table, List, Avatar } from 'antd';
-import { Bar } from '@ant-design/plots';
+import { Card, Row, Col, Spin, Table, List, Avatar } from 'antd';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { useTable } from '@refinedev/antd';
 import dayjs from 'dayjs';
+import Image from 'next/image';
+
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
 const HomePage: React.FC = () => {
   const { data: currentUser, isLoading: isLoadingUser } = useOne({
     resource: 'users',
-    id: 'current', // Assuming you have a way to get the current user's ID
+    id: 'a703c967-cbf5-4145-8e62-f072e7706e1b', // Alice's actual ID
   });
 
   const { tableProps: taskProps, isLoading: isLoadingTasks } = useTable({
@@ -20,7 +23,7 @@ const HomePage: React.FC = () => {
         {
           field: 'assignee_id',
           operator: 'eq',
-          value: currentUser?.data?.id,
+          value: 'a703c967-cbf5-4145-8e62-f072e7706e1b',
         },
         {
           field: 'status',
@@ -40,7 +43,7 @@ const HomePage: React.FC = () => {
       {
         field: 'assignee_id',
         operator: 'eq',
-        value: currentUser?.data?.id,
+        value: 'a703c967-cbf5-4145-8e62-f072e7706e1b',
       },
       {
         field: 'status',
@@ -55,9 +58,9 @@ const HomePage: React.FC = () => {
     resource: 'users',
     filters: [
       {
-        field: 'manager_id',
-        operator: 'eq',
-        value: currentUser?.data?.id,
+        field: 'team',
+        operator: 'in',
+        value: ['Privacy Team', 'Compliance Team', 'Risk Team', 'Security Operations'],
       },
     ],
   });
@@ -102,9 +105,23 @@ const HomePage: React.FC = () => {
     return acc;
   }, {} as Record<string, number>) || {};
 
+  const taskStatusChartData = Object.entries(taskStatusData).map(([status, count]) => ({
+    name: status,
+    value: count,
+  }));
+
   return (
     <div>
-      <h1>Welcome, {currentUser?.data?.full_name}</h1>
+      <h1>Welcome, Alice Williams</h1>
+      
+      <div style={{ marginBottom: '16px', position: 'relative', width: '100%', height: '260px' }}>
+        <Image
+          src="/banners/landing_page.png"
+          alt="OpenGRC Dashboard Banner"
+          layout="fill"
+          objectFit="cover"
+        />
+      </div>
       
       <Row gutter={[16, 16]}>
         <Col span={16}>
@@ -114,11 +131,26 @@ const HomePage: React.FC = () => {
         </Col>
         <Col span={8}>
           <Card title="Task Status">
-            <Bar
-              data={Object.entries(taskStatusData).map(([status, count]) => ({ status, count }))}
-              xField="count"
-              yField="status"
-            />
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={taskStatusChartData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={80}
+                  fill="#8884d8"
+                  paddingAngle={5}
+                  dataKey="value"
+                >
+                  {taskStatusChartData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
           </Card>
         </Col>
       </Row>
@@ -148,7 +180,7 @@ const HomePage: React.FC = () => {
                   <List.Item.Meta
                     avatar={<Avatar>{item.full_name[0]}</Avatar>}
                     title={item.full_name}
-                    description={item.job_title}
+                    description={`${item.job_title} - ${item.team}`}
                   />
                 </List.Item>
               )}
