@@ -97,7 +97,8 @@ h2 {
 }
 
 .video-container {
-    background-color: #333;
+    /* Remove the background color */
+    background-color: transparent;
     height: 300px;
     display: flex;
     justify-content: center;
@@ -177,6 +178,7 @@ footer {
     height: auto;
     display: block;
     object-fit: cover;
+    transition: transform 0.3s ease; /* Add a subtle transition */
 }
 
 /* Remove any potential border or outline */
@@ -185,11 +187,7 @@ footer {
     outline: none;
 }
 
-/* Remove the scale effect and hover effect */
-.banner-image {
-    transition: none;
-}
-
+/* Add a subtle hover effect */
 .banner-image:hover {
-    transform: translateY(250px); /* Maintain the position on hover */
+    transform: scale(1.02); /* Slightly increase size on hover */
 }
