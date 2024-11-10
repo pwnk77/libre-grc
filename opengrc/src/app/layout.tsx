@@ -124,6 +124,19 @@ export default function RootLayout({
                         },
                       },
                       {
+                        name: "incident_management",
+                        list: "/incident_management",
+                        create: "/incident_management/create",
+                        edit: "/incident_management/edit/:id",
+                        show: "/incident_management/show/:id",
+                        meta: {
+                          parent: "risk",
+                          canDelete: true,
+                          label: "Incident Management",
+                          icon: <AlertOutlined />,
+                        },
+                      },
+                      {
                         name: "compliance",
                         meta: {
                           label: "Compliance",
