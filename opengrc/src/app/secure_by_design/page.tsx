@@ -10,10 +10,83 @@ import {
   useSelect,
   CreateButton,
 } from "@refinedev/antd";
-import { BaseKey, BaseRecord, CrudFilters, useNavigation, useMany } from "@refinedev/core";
-import { Space, Table, Checkbox, Button, Popover, Select, Input, Tag } from "antd";
+import { BaseKey, BaseRecord, CrudFilters, useNavigation, useList, useMany } from "@refinedev/core";
+import { Space, Table, Checkbox, Button, Popover, Select, Input, Tag, AutoComplete, Typography } from "antd";
 import { useState, useEffect } from "react";
-import { SettingOutlined } from "@ant-design/icons";
+import { SettingOutlined, SearchOutlined } from "@ant-design/icons";
+
+const { Text } = Typography;
+
+interface ISearchItem {
+  id: string;
+  product_name: string;
+  description?: string;
+  product_type: string;
+  workflow_status: string;
+}
+
+interface ICompanyInfo {
+  id: string;
+  entity: string;
+  business_unit?: string;
+  sub_business_unit?: string;
+  support_function?: string;
+}
+
+interface IOptionGroup {
+  key: string;
+  value: string;
+  label: React.ReactNode;
+}
+
+interface IOptions {
+  label: React.ReactNode;
+  options: IOptionGroup[];
+}
+
+const renderTitle = (title: string) => (
+  <Text strong style={{ fontSize: "16px" }}>
+    {title}
+  </Text>
+);
+
+const renderItem = (item: ISearchItem): IOptionGroup => ({
+  key: item.id,
+  value: item.product_name,
+  label: (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+        <Text strong>{item.product_name}</Text>
+        <Tag color={getWorkflowStatusColor(item.workflow_status)}>{item.workflow_status}</Tag>
+      </div>
+      {item.description && (
+        <Text type="secondary" style={{ fontSize: '12px' }}>
+          {item.description.length > 100 
+            ? `${item.description.slice(0, 100)}...` 
+            : item.description}
+        </Text>
+      )}
+      <div>
+        <Tag color="blue">{item.product_type}</Tag>
+      </div>
+    </div>
+  ),
+});
+
+const getWorkflowStatusColor = (status: string) => {
+  switch (status) {
+    case 'Initiation':
+      return 'blue';
+    case 'Design Review':
+      return 'orange';
+    case 'Implementation':
+      return 'green';
+    case 'Verification':
+      return 'purple';
+    default:
+      return 'default';
+  }
+};
 
 export default function SecureByDesignList() {
   const [selectedColumns, setSelectedColumns] = useState<string[]>([
@@ -24,7 +97,8 @@ export default function SecureByDesignList() {
     "workflow_status",
     "created_at",
   ]);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [value, setValue] = useState<string>("");
+  const [options, setOptions] = useState<IOptions[]>([]);
 
   const { show } = useNavigation();
 
@@ -56,15 +130,13 @@ export default function SecureByDesignList() {
         workflow_status: string;
       };
 
-      if (searchTerm) {
+      if (value) {
         filters.push({
           operator: "or",
           value: [
-            { field: "product_name", operator: "contains", value: searchTerm },
-            { field: "description", operator: "contains", value: searchTerm },
-            { field: "line_of_business", operator: "contains", value: searchTerm },
-            // Add more fields as needed
-          ],
+            { field: "product_name", operator: "contains", value },
+            { field: "description", operator: "contains", value }
+          ]
         });
       }
 
@@ -80,24 +152,66 @@ export default function SecureByDesignList() {
     },
   });
 
-  // Clear search on page reload
+  const { refetch: refetchProducts } = useList<ISearchItem>({
+    resource: "secure_by_design",
+    filters: [
+      {
+        operator: "or",
+        value: [
+          { field: "product_name", operator: "contains", value },
+          { field: "description", operator: "contains", value }
+        ]
+      }
+    ],
+    queryOptions: {
+      enabled: false,
+      onSuccess: (data) => {
+        const productOptionGroup = data.data.map(renderItem);
+        if (productOptionGroup.length > 0) {
+          setOptions([
+            {
+              label: renderTitle("Products"),
+              options: productOptionGroup,
+            },
+          ]);
+        }
+      },
+    },
+  });
+
   useEffect(() => {
-    setSearchTerm("");
-  }, []);
-
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newSearchTerm = e.target.value;
-    setSearchTerm(newSearchTerm);
-    
-    if (newSearchTerm === "") {
-      // Reset the table and URL when search is cleared
-      setFilters([], "replace");
+    setOptions([]);
+    if (value.length > 2) {
+      refetchProducts();
     }
-  };
+  }, [value]);
 
-  const handleSearch = () => {
-    searchFormProps?.onFinish?.({});
-  };
+  const renderSearch = () => (
+    <div style={{ 
+      width: 500, 
+      marginBottom: 16,
+      marginLeft: 'auto'  // Push to right side
+    }}>
+      <AutoComplete<string, IOptions>
+        style={{ width: "100%" }}
+        options={options}
+        onSearch={(value: string) => setValue(value)}
+        onSelect={(value, option: any) => {
+          if (option.key) {
+            show("secure_by_design", option.key);
+          }
+        }}
+        notFoundContent="No results found"
+        dropdownMatchSelectWidth={true}
+      >
+        <Input
+          placeholder="Search products by name or description..."
+          suffix={<SearchOutlined />}
+          size="large"
+        />
+      </AutoComplete>
+    </div>
+  );
 
   const { selectProps: workflowStatusSelectProps } = useSelect({
     resource: "secure_by_design",
@@ -105,28 +219,13 @@ export default function SecureByDesignList() {
     optionValue: "workflow_status",
   });
 
-  const { data: companyData, isLoading: companyLoading } = useMany({
+  const { data: companyData, isLoading: companyLoading } = useMany<ICompanyInfo>({
     resource: "company_info",
     ids: tableProps?.dataSource?.map((item: any) => item.company_info_id) || [],
     queryOptions: {
       enabled: !!tableProps?.dataSource,
     },
   });
-
-  const getWorkflowStatusColor = (status: string) => {
-    switch (status) {
-      case 'Initiation':
-        return 'blue';
-      case 'Design Review':
-        return 'orange';
-      case 'Implementation':
-        return 'green';
-      case 'Verification':
-        return 'purple';
-      default:
-        return 'default';
-    }
-  };
 
   const allColumns = [
     {
@@ -222,7 +321,7 @@ export default function SecureByDesignList() {
       dataIndex: "company_info_id",
       title: "Company",
       render: (value: string) => {
-        const company = companyData?.data?.find(item => item.id === value);
+        const company = companyData?.data?.find((item: ICompanyInfo) => item.id === value);
         return company ? company.entity : 'N/A';
       },
     },
@@ -283,14 +382,7 @@ export default function SecureByDesignList() {
         </Popover>,
       ]}
     >
-      <Input.Search
-        placeholder="Search products..."
-        value={searchTerm}
-        onChange={handleSearchChange}
-        onSearch={handleSearch}
-        style={{ marginBottom: 16 }}
-        allowClear
-      />
+      {renderSearch()}
       <Table 
         {...tableProps} 
         rowKey="id"

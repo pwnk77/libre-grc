@@ -10,10 +10,63 @@ import {
   useSelect,
   CreateButton,
 } from "@refinedev/antd";
-import { BaseKey, BaseRecord, CrudFilters, useNavigation } from "@refinedev/core";
-import { Space, Table, Checkbox, Button, Popover, Select, Input } from "antd";
+import { BaseKey, BaseRecord, CrudFilters, useNavigation, useList } from "@refinedev/core";
+import { Space, Table, Checkbox, Button, Popover, Select, Input, Tag, AutoComplete, Typography } from "antd";
 import { useState, useEffect } from "react";
-import { SettingOutlined } from "@ant-design/icons";
+import { SettingOutlined, SearchOutlined } from "@ant-design/icons";
+
+const { Text } = Typography;
+
+interface ISearchItem {
+  id: string;
+  title: string;
+  description?: string;
+  type: string;
+  issuing_body: string;
+  identifier: string;
+}
+
+interface IOptionGroup {
+  key: string;
+  value: string;
+  label: React.ReactNode;
+}
+
+interface IOptions {
+  label: React.ReactNode;
+  options: IOptionGroup[];
+}
+
+const renderTitle = (title: string) => (
+  <Text strong style={{ fontSize: "16px" }}>
+    {title}
+  </Text>
+);
+
+const renderItem = (item: ISearchItem): IOptionGroup => ({
+  key: item.id,
+  value: item.title,
+  label: (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+        <Text strong>{item.title}</Text>
+        <Tag color="blue">{item.type}</Tag>
+      </div>
+      {item.description && (
+        <Text type="secondary" style={{ fontSize: '12px' }}>
+          {item.description.length > 100 
+            ? `${item.description.slice(0, 100)}...` 
+            : item.description}
+        </Text>
+      )}
+      <div style={{ marginTop: 4 }}>
+        <Text type="secondary">
+          {item.issuing_body} - {item.identifier}
+        </Text>
+      </div>
+    </div>
+  ),
+});
 
 export default function AuthorityDocumentsList() {
   const [selectedColumns, setSelectedColumns] = useState<string[]>([
@@ -27,7 +80,8 @@ export default function AuthorityDocumentsList() {
     "created_at",
     "updated_at",
   ]);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [value, setValue] = useState<string>("");
+  const [options, setOptions] = useState<IOptions[]>([]);
 
   const { show } = useNavigation();
 
@@ -59,13 +113,13 @@ export default function AuthorityDocumentsList() {
         type: string;
       };
 
-      if (searchTerm) {
+      if (value) {
         filters.push({
           operator: "or",
           value: [
-            { field: "title", operator: "contains", value: searchTerm },
-            { field: "identifier", operator: "contains", value: searchTerm },
-            { field: "description", operator: "contains", value: searchTerm },
+            { field: "title", operator: "contains", value },
+            { field: "identifier", operator: "contains", value },
+            { field: "description", operator: "contains", value },
           ],
         });
       }
@@ -82,14 +136,44 @@ export default function AuthorityDocumentsList() {
     },
   });
 
-  // Clear search on page reload
+  const { refetch: refetchDocuments } = useList<ISearchItem>({
+    resource: "authority_documents",
+    filters: [
+      {
+        operator: "or",
+        value: [
+          { field: "title", operator: "contains", value },
+          { field: "identifier", operator: "contains", value },
+          { field: "description", operator: "contains", value }
+        ]
+      }
+    ],
+    queryOptions: {
+      enabled: false,
+      onSuccess: (data) => {
+        const documentOptionGroup = data.data.map(renderItem);
+        if (documentOptionGroup.length > 0) {
+          setOptions([
+            {
+              label: renderTitle("Authority Documents"),
+              options: documentOptionGroup,
+            },
+          ]);
+        }
+      },
+    },
+  });
+
   useEffect(() => {
-    setSearchTerm("");
-  }, []);
+    setOptions([]);
+    if (value.length > 2) {
+      refetchDocuments();
+    }
+  }, [value]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newSearchTerm = e.target.value;
-    setSearchTerm(newSearchTerm);
+    setValue(newSearchTerm);
     
     if (newSearchTerm === "") {
       setFilters([], "replace");
@@ -207,6 +291,33 @@ export default function AuthorityDocumentsList() {
     });
   };
 
+  const renderSearch = () => (
+    <div style={{ 
+      width: 500, 
+      marginBottom: 16,
+      marginLeft: 'auto'  // Push to right side
+    }}>
+      <AutoComplete<string, IOptions>
+        style={{ width: "100%" }}
+        options={options}
+        onSearch={(value: string) => setValue(value)}
+        onSelect={(value, option: any) => {
+          if (option.key) {
+            show("authority_documents", option.key);
+          }
+        }}
+        notFoundContent="No results found"
+        dropdownMatchSelectWidth={true}
+      >
+        <Input
+          placeholder="Search authority documents by title, identifier, or description..."
+          suffix={<SearchOutlined />}
+          size="large"
+        />
+      </AutoComplete>
+    </div>
+  );
+
   return (
     <List
       headerButtons={[
@@ -222,14 +333,7 @@ export default function AuthorityDocumentsList() {
         </Popover>,
       ]}
     >
-      <Input.Search
-        placeholder="Search authority documents..."
-        value={searchTerm}
-        onChange={handleSearchChange}
-        onSearch={handleSearch}
-        style={{ marginBottom: 16 }}
-        allowClear
-      />
+      {renderSearch()}
       <Table 
         {...tableProps} 
         rowKey="id"
