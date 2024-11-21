@@ -23,6 +23,30 @@ export function useAttachments(parentId: string) {
   const handleUpload = async (options: any) => {
     const { onSuccess, onError, file } = options;
 
+    // Validate file size
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+      message.error('File must be smaller than 10MB');
+      onError(new Error('File too large'));
+      return;
+    }
+
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/png', 'application/pdf', 'application/msword'];
+    if (!allowedTypes.includes(file.type)) {
+      message.error('File type not supported');
+      onError(new Error('Invalid file type'));
+      return;
+    }
+
+    // Validate file name
+    const validFileName = /^[a-zA-Z0-9-_. ]+$/;
+    if (!validFileName.test(file.name)) {
+      message.error('File name contains invalid characters');
+      onError(new Error('Invalid file name'));
+      return;
+    }
+
     try {
       const fileExt = file.name.split('.').pop();
       const fileName = `${Math.random()}.${fileExt}`;

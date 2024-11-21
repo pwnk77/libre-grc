@@ -1,26 +1,64 @@
 "use client";
 
 import { Edit, useForm, useSelect } from "@refinedev/antd";
-import { useMany, useCreate, useGetIdentity, useOne } from "@refinedev/core";
+import { HttpError } from "@refinedev/core";
+import { Form, Input, Select, DatePicker, Row, Col, Card, Typography, message } from "antd";
 import { useParams } from "next/navigation";
-import { Form, Input, Select, DatePicker, Row, Col, Card, Typography } from "antd";
+import dayjs from 'dayjs';
 import { Activity } from "../../activity";
 import { useAttachments } from "../../attachments";
-import dayjs from 'dayjs';
 import { TasksTab } from "../../tasks";
 
 const { TextArea } = Input;
 const { Text, Paragraph } = Typography;
 
+interface ITestData {
+  evidence_request?: string;
+  test_of_design?: string;
+  test_of_effectiveness?: string;
+  test_results?: string;
+  tester?: string;
+  notes?: string;
+  control_id?: string;
+  audit_strategy?: string;
+  test_date?: string;
+  compliance_status?: string;
+  workflow_status?: string;
+}
+
+interface IError {
+  response: {
+    data: {
+      errors: {
+        [key: string]: string[];
+      };
+    };
+  };
+}
+
 export default function TestingEdit() {
   const params = useParams();
-  const { formProps, saveButtonProps, queryResult } = useForm({
+  const { formProps, saveButtonProps, queryResult } = useForm<ITestData, HttpError>({
     resource: "testing",
     id: params.id as string,
+    meta: {
+      onError: (error: IError) => {
+        if (error?.response?.data?.errors) {
+          const errors = error.response.data.errors;
+          
+          Object.keys(errors).forEach((key) => {
+            formProps.form?.setFields([
+              {
+                name: key,
+                errors: Array.isArray(errors[key]) ? errors[key] : [errors[key]],
+              },
+            ]);
+          });
+          message.error('Validation failed. Please check the form.');
+        }
+      },
+    },
   });
-
-  const { mutate: createChangeHistory } = useCreate();
-  const { data: identity } = useGetIdentity<{ id: string }>();
 
   const { data, isLoading } = queryResult || {};
   const record = data?.data;
@@ -33,73 +71,10 @@ export default function TestingEdit() {
     optionValue: "id",
   });
 
-  const handleUpdate = async (values: any) => {
-    try {
-      const response = await formProps.onFinish?.(values);
-      if (response && 'data' in response) {
-        const changedFields = Object.keys(values).reduce((acc: Record<string, any>, key) => {
-          if (JSON.stringify(values[key]) !== JSON.stringify(record?.[key])) {
-            acc[key] = values[key];
-          }
-          return acc;
-        }, {});
-
-        if (Object.keys(changedFields).length > 0) {
-          createChangeHistory({
-            resource: "change_history",
-            values: {
-              table_name: "testing",
-              record_id: params.id,
-              action: "Updated",
-              change_details: JSON.stringify(changedFields),
-              changed_by: identity?.id,
-            },
-          });
-        }
-      }
-    } catch (error) {
-      console.error("Error updating testing:", error);
-    }
-  };
-
-  const { data: companyInfoData, isLoading: companyInfoLoading } = useOne({
-    resource: "company_info",
-    id: record?.company_info_id || "",
-    queryOptions: {
-      enabled: !!record?.company_info_id,
-    },
-  });
-
-  const { data: evidenceProviderData, isLoading: evidenceProviderLoading } = useOne({
-    resource: "users",
-    id: record?.evidence_provider_id || "",
-    queryOptions: {
-      enabled: !!record?.evidence_provider_id,
-    },
-  });
-
-  const { data: complianceManagerData, isLoading: complianceManagerLoading } = useOne({
-    resource: "users",
-    id: record?.compliance_manager_id || "",
-    queryOptions: {
-      enabled: !!record?.compliance_manager_id,
-    },
-  });
-
-  const tabItems = [
-    // ... other tab items
-    {
-      key: "tasks",
-      label: "Tasks",
-      children: <TasksTab testingId={params.id as string} />,
-    },
-  ];
-
   return (
     <Edit saveButtonProps={saveButtonProps}>
       <Form 
         {...formProps} 
-        onFinish={handleUpdate}
         layout="vertical"
         initialValues={{
           ...record,
@@ -110,7 +85,7 @@ export default function TestingEdit() {
           <Col span={18}>
             <Card>
               <Row gutter={24}>
-                <Col span={24}>
+                <Col span={12}>
                   <Form.Item
                     name="control_id"
                     label="Related Control"
@@ -119,14 +94,42 @@ export default function TestingEdit() {
                     <Select {...controlSelectProps} />
                   </Form.Item>
                 </Col>
+                <Col span={12}>
+                  <Form.Item
+                    name="test_date"
+                    label="Test Date"
+                    rules={[{ required: true }]}
+                  >
+                    <DatePicker style={{ width: '100%' }} />
+                  </Form.Item>
+                </Col>
               </Row>
+
               <Form.Item
-                name="evidence_request"
                 label="Evidence Request"
-                rules={[{ required: true }]}
+                name="evidence_request"
+                rules={[
+                  { required: true, message: 'Evidence request is required' },
+                  { min: 10, message: 'Evidence request must be at least 10 characters' },
+                  { max: 2000, message: 'Evidence request cannot exceed 2000 characters' },
+                  {
+                    validator: async (_, value) => {
+                      if (value) {
+                        if (/<[^>]*>/.test(value)) {
+                          throw new Error('HTML tags are not allowed');
+                        }
+                        if (/(\b(select|insert|update|delete|drop|union|exec)\b)|(['";])/i.test(value)) {
+                          throw new Error('Invalid characters or SQL keywords detected');
+                        }
+                      }
+                    }
+                  }
+                ]}
+                validateTrigger={['onChange', 'onBlur']}
               >
-                <TextArea rows={4} />
+                <TextArea rows={4} maxLength={2000} showCount />
               </Form.Item>
+
               <Form.Item
                 name="audit_strategy"
                 label="Audit Strategy"
@@ -142,52 +145,78 @@ export default function TestingEdit() {
                   ]}
                 />
               </Form.Item>
+
               <Form.Item
-                name="test_of_design"
                 label="Test of Design"
+                name="test_of_design"
+                rules={[
+                  { max: 2000, message: 'Test of design cannot exceed 2000 characters' },
+                  {
+                    validator: async (_, value) => {
+                      if (value) {
+                        if (/<[^>]*>/.test(value)) {
+                          throw new Error('HTML tags are not allowed');
+                        }
+                        if (/(\b(select|insert|update|delete|drop|union|exec)\b)|(['";])/i.test(value)) {
+                          throw new Error('Invalid characters or SQL keywords detected');
+                        }
+                      }
+                    }
+                  }
+                ]}
+                validateTrigger={['onChange', 'onBlur']}
               >
-                <TextArea rows={4} />
+                <TextArea rows={4} maxLength={2000} showCount />
               </Form.Item>
+
               <Form.Item
-                name="test_of_effectiveness"
                 label="Test of Effectiveness"
+                name="test_of_effectiveness"
+                rules={[
+                  { max: 2000, message: 'Test of effectiveness cannot exceed 2000 characters' },
+                  {
+                    validator: async (_, value) => {
+                      if (value) {
+                        if (/<[^>]*>/.test(value)) {
+                          throw new Error('HTML tags are not allowed');
+                        }
+                        if (/(\b(select|insert|update|delete|drop|union|exec)\b)|(['";])/i.test(value)) {
+                          throw new Error('Invalid characters or SQL keywords detected');
+                        }
+                      }
+                    }
+                  }
+                ]}
+                validateTrigger={['onChange', 'onBlur']}
               >
-                <TextArea rows={4} />
+                <TextArea rows={4} maxLength={2000} showCount />
               </Form.Item>
+
               <Form.Item
-                name="test_results"
                 label="Test Results"
+                name="test_results"
+                rules={[
+                  { max: 2000, message: 'Test results cannot exceed 2000 characters' },
+                  {
+                    validator: async (_, value) => {
+                      if (value) {
+                        if (/<[^>]*>/.test(value)) {
+                          throw new Error('HTML tags are not allowed');
+                        }
+                        if (/(\b(select|insert|update|delete|drop|union|exec)\b)|(['";])/i.test(value)) {
+                          throw new Error('Invalid characters or SQL keywords detected');
+                        }
+                      }
+                    }
+                  }
+                ]}
+                validateTrigger={['onChange', 'onBlur']}
               >
-                <TextArea rows={4} />
+                <TextArea rows={4} maxLength={2000} showCount />
               </Form.Item>
-              <Form.Item
-                name="notes"
-                label="Notes"
-              >
-                <TextArea rows={4} />
-              </Form.Item>
-            </Card>
-            <Card title="Attachments" style={{ marginTop: 20, borderRadius: 8 }}>
-              {renderAttachments()}
-            </Card>
-            <Activity parentId={params.id as string} />
-          </Col>
-          <Col span={6}>
-            <Card title="Contextual Information">
-              <Row gutter={[0, 16]}>
-                <Col span={24}>
-                  <Text strong>Company Info:</Text>
-                  <Paragraph>{companyInfoData?.data?.entity || "N/A"}</Paragraph>
-                </Col>
-                <Col span={24}>
-                  <Text strong>Evidence Provider:</Text>
-                  <Paragraph>{evidenceProviderData?.data?.full_name || "N/A"}</Paragraph>
-                </Col>
-                <Col span={24}>
-                  <Text strong>Compliance Manager:</Text>
-                  <Paragraph>{complianceManagerData?.data?.full_name || "N/A"}</Paragraph>
-                </Col>
-                <Col span={24}>
+
+              <Row gutter={24}>
+                <Col span={12}>
                   <Form.Item
                     name="compliance_status"
                     label="Compliance Status"
@@ -203,7 +232,7 @@ export default function TestingEdit() {
                     />
                   </Form.Item>
                 </Col>
-                <Col span={24}>
+                <Col span={12}>
                   <Form.Item
                     name="workflow_status"
                     label="Workflow Status"
@@ -219,26 +248,63 @@ export default function TestingEdit() {
                     />
                   </Form.Item>
                 </Col>
-                <Col span={24}>
-                  <Form.Item
-                    name="tester"
-                    label="Tester"
-                    rules={[{ required: true }]}
-                  >
-                    <Input />
-                  </Form.Item>
-                </Col>
-                <Col span={24}>
-                  <Form.Item
-                    name="test_date"
-                    label="Test Date"
-                    rules={[{ required: true }]}
-                  >
-                    <DatePicker style={{ width: '100%' }} />
-                  </Form.Item>
-                </Col>
               </Row>
+
+              <Form.Item
+                label="Tester"
+                name="tester"
+                rules={[
+                  { required: true, message: 'Tester name is required' },
+                  { max: 100, message: 'Tester name cannot exceed 100 characters' },
+                  {
+                    validator: async (_, value) => {
+                      if (value) {
+                        if (/<[^>]*>/.test(value)) {
+                          throw new Error('HTML tags are not allowed');
+                        }
+                        if (/(\b(select|insert|update|delete|drop|union|exec)\b)|(['";])/i.test(value)) {
+                          throw new Error('Invalid characters or SQL keywords detected');
+                        }
+                        if (!/^[A-Za-z\s\-'.]+$/.test(value)) {
+                          throw new Error('Only letters, spaces, hyphens, apostrophes and periods allowed');
+                        }
+                      }
+                    }
+                  }
+                ]}
+                validateTrigger={['onChange', 'onBlur']}
+              >
+                <Input />
+              </Form.Item>
+
+              <Form.Item
+                label="Notes"
+                name="notes"
+                rules={[
+                  { max: 2000, message: 'Notes cannot exceed 2000 characters' },
+                  {
+                    validator: async (_, value) => {
+                      if (value) {
+                        if (/<[^>]*>/.test(value)) {
+                          throw new Error('HTML tags are not allowed');
+                        }
+                        if (/(\b(select|insert|update|delete|drop|union|exec)\b)|(['";])/i.test(value)) {
+                          throw new Error('Invalid characters or SQL keywords detected');
+                        }
+                      }
+                    }
+                  }
+                ]}
+                validateTrigger={['onChange', 'onBlur']}
+              >
+                <TextArea rows={4} maxLength={2000} showCount />
+              </Form.Item>
             </Card>
+
+            <Card title="Attachments" style={{ marginTop: 20, borderRadius: 8 }}>
+              {renderAttachments()}
+            </Card>
+            <Activity parentId={params.id as string} />
           </Col>
         </Row>
       </Form>

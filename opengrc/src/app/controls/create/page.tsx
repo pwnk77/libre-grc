@@ -1,328 +1,299 @@
 "use client";
 
 import { Create, useForm } from "@refinedev/antd";
-import { BaseKey, useCreate, useGetIdentity, useList } from "@refinedev/core";
-import { Form, Input, Select, DatePicker, Typography, Tabs, Card, Row, Col, Tag } from "antd";
-import { useState, useEffect } from "react";
+import { HttpError } from "@refinedev/core";
+import { Form, Input, Select, DatePicker, Typography, Tabs, Card, Row, Col, Tag, message } from "antd";
 
-const { Title, Text } = Typography;
+const { TextArea } = Input;
+
+interface IError {
+  response: {
+    data: {
+      errors: {
+        [key: string]: string[];
+      };
+    };
+  };
+}
+
+// Add validation rules
+const controlIdRules = [
+  { required: true, message: 'Control ID is required' },
+  { min: 3, message: 'Control ID must be at least 3 characters' },
+  { max: 100, message: 'Control ID cannot exceed 100 characters' },
+  {
+    validator: async (_: any, value: string) => {
+      if (value) {
+        if (/<[^>]*>/.test(value)) {
+          throw new Error('HTML tags are not allowed');
+        }
+        if (/(\b(select|insert|update|delete|drop|union|exec)\b)|(['";])/i.test(value)) {
+          throw new Error('Invalid characters or SQL keywords detected');
+        }
+        if (!/^[A-Za-z0-9-_\.]+$/.test(value)) {
+          throw new Error('Only letters, numbers, hyphens, dots and underscores allowed');
+        }
+      }
+      return Promise.resolve();
+    }
+  }
+];
+
+const domainRules = [
+  { required: true, message: 'Domain is required' },
+  { max: 200, message: 'Domain cannot exceed 200 characters' },
+  {
+    validator: async (_: any, value: string) => {
+      if (value) {
+        if (/<[^>]*>/.test(value)) {
+          throw new Error('HTML tags are not allowed');
+        }
+        if (/(\b(select|insert|update|delete|drop|union|exec)\b)|(['";])/i.test(value)) {
+          throw new Error('Invalid characters or SQL keywords detected');
+        }
+      }
+      return Promise.resolve();
+    }
+  }
+];
+
+const controlRequirementsRules = [
+  { required: true, message: 'Control requirements are required' },
+  { max: 2000, message: 'Control requirements cannot exceed 2000 characters' },
+  {
+    validator: async (_: any, value: string) => {
+      if (value) {
+        if (/<[^>]*>/.test(value)) {
+          throw new Error('HTML tags are not allowed');
+        }
+        if (/(\b(select|insert|update|delete|drop|union|exec)\b)|(['";])/i.test(value)) {
+          throw new Error('Invalid characters or SQL keywords detected');
+        }
+      }
+      return Promise.resolve();
+    }
+  }
+];
+
+const riskStatementRules = [
+  { required: true, message: 'Risk statement is required' },
+  { max: 2000, message: 'Risk statement cannot exceed 2000 characters' },
+  {
+    validator: async (_: any, value: string) => {
+      if (value) {
+        if (/<[^>]*>/.test(value)) {
+          throw new Error('HTML tags are not allowed');
+        }
+        if (/(\b(select|insert|update|delete|drop|union|exec)\b)|(['";])/i.test(value)) {
+          throw new Error('Invalid characters or SQL keywords detected');
+        }
+      }
+      return Promise.resolve();
+    }
+  }
+];
+
+const implementationRules = [
+  { max: 2000, message: 'Implementation details cannot exceed 2000 characters' },
+  {
+    validator: async (_: any, value: string) => {
+      if (value) {
+        if (/<[^>]*>/.test(value)) {
+          throw new Error('HTML tags are not allowed');
+        }
+        if (/(\b(select|insert|update|delete|drop|union|exec)\b)|(['";])/i.test(value)) {
+          throw new Error('Invalid characters or SQL keywords detected');
+        }
+      }
+      return Promise.resolve();
+    }
+  }
+];
+
+const frameworkRules = [
+  { max: 200, message: 'Framework field cannot exceed 200 characters' },
+  {
+    validator: async (_: any, value: string) => {
+      if (value) {
+        if (/<[^>]*>/.test(value)) {
+          throw new Error('HTML tags are not allowed');
+        }
+        if (/(\b(select|insert|update|delete|drop|union|exec)\b)|(['";])/i.test(value)) {
+          throw new Error('Invalid characters or SQL keywords detected');
+        }
+      }
+      return Promise.resolve();
+    }
+  }
+];
 
 export default function ControlCreate() {
-  const { formProps, saveButtonProps, queryResult } = useForm({
-    resource: "controls",
+  const { formProps, saveButtonProps } = useForm({
+    meta: {
+      onError: (error: IError) => {
+        if (error?.response?.data?.errors) {
+          const errors = error.response.data.errors;
+          
+          Object.keys(errors).forEach((key) => {
+            formProps.form?.setFields([
+              {
+                name: key,
+                errors: Array.isArray(errors[key]) ? errors[key] : [errors[key]],
+              },
+            ]);
+          });
+          message.error('Validation failed. Please check the form.');
+        }
+      },
+    },
   });
-  const { mutate: createChangeHistory } = useCreate();
-  const { data: identity } = useGetIdentity<{ id: string }>();
-
-  const [users, setUsers] = useState<{ value: BaseKey; label: string }[]>([]);
-  const [companies, setCompanies] = useState<{ value: BaseKey; label: string }[]>([]);
-
-  const { data: userData, isLoading: userLoading } = useList({
-    resource: "users",
-  });
-
-  const { data: companyData, isLoading: companyLoading } = useList({
-    resource: "companies",
-  });
-
-  useEffect(() => {
-    if (userData?.data) {
-      const formattedUsers = userData.data.map(user => ({
-        value: user.id,
-        label: user.full_name,
-      }));
-      setUsers(formattedUsers as { value: BaseKey; label: string }[]);
-    }
-  }, [userData]);
-
-  useEffect(() => {
-    if (companyData?.data) {
-      const formattedCompanies = companyData.data.map(company => ({
-        value: company.id,
-        label: company.name, // Adjust this field name if it's different in your data
-      }));
-      setCompanies(formattedCompanies as { value: BaseKey; label: string }[]);
-    }
-  }, [companyData]);
-
-  const renderRightSideBox = () => (
-    <Card title="Contextual Information" style={{ marginBottom: 20, borderRadius: 8 }}>
-      <Row gutter={[16, 24]}>
-        <Col span={24}>
-          <Title level={4}>Ownership</Title>
-        </Col>
-        <Col span={24}>
-          <Form.Item label="Control Owner" name="control_owner_id">
-            <Select options={users} loading={userLoading} />
-          </Form.Item>
-        </Col>
-        <Col span={24}>
-          <Form.Item label="Process Owner" name="process_owner_id">
-            <Select options={users} loading={userLoading} />
-          </Form.Item>
-        </Col>
-        <Col span={24}>
-          <Form.Item label="Compliance SPOC" name="compliance_spoc_id">
-            <Select options={users} loading={userLoading} />
-          </Form.Item>
-        </Col>
-        <Col span={24}>
-          <Form.Item label="Company" name="company_info_id">
-            <Select options={companies} loading={companyLoading} />
-          </Form.Item>
-        </Col>
-        <Col span={24}>
-          <Title level={4}>Status</Title>
-        </Col>
-        <Col span={24}>
-          <Form.Item label="Compliance Status" name="compliance_status">
-            <Select
-              options={[
-                { value: "Not Implemented", label: <Tag color="red">Not Implemented</Tag> },
-                { value: "Partially Implemented", label: <Tag color="orange">Partially Implemented</Tag> },
-                { value: "Implemented", label: <Tag color="green">Implemented</Tag> },
-                { value: "Not Applicable", label: <Tag color="gray">Not Applicable</Tag> },
-              ]}
-            />
-          </Form.Item>
-        </Col>
-        <Col span={24}>
-          <Form.Item label="Workflow Status" name="workflow_status">
-            <Select
-              options={[
-                { value: "Draft", label: <Tag color="blue">Draft</Tag> },
-                { value: "In Review", label: <Tag color="orange">In Review</Tag> },
-                { value: "Approved", label: <Tag color="green">Approved</Tag> },
-                { value: "Retired", label: <Tag color="gray">Retired</Tag> },
-              ]}
-            />
-          </Form.Item>
-        </Col>
-      </Row>
-    </Card>
-  );
-
-  const tabItems = [
-    {
-      key: "1",
-      label: "Overview",
-      children: (
-        <Row gutter={[0, 24]}>
-          <Col span={24}>
-            <Form.Item
-              label="Control ID"
-              name="control_id"
-              rules={[{ required: true }]}
-            >
-              <Input />
-            </Form.Item>
-          </Col>
-          <Col span={24}>
-            <Form.Item
-              label="Domain"
-              name="domain"
-              rules={[{ required: true }]}
-            >
-              <Input />
-            </Form.Item>
-          </Col>
-          <Col span={24}>
-            <Form.Item
-              label="Control Requirements"
-              name="control_requirements"
-              rules={[{ required: true }]}
-            >
-              <Input.TextArea rows={5} />
-            </Form.Item>
-          </Col>
-          <Col span={24}>
-            <Form.Item
-              label="Risk Statement"
-              name="risk_statement"
-              rules={[{ required: true }]}
-            >
-              <Input.TextArea rows={3} />
-            </Form.Item>
-          </Col>
-        </Row>
-      ),
-    },
-    {
-      key: "2",
-      label: "Implementation",
-      children: (
-        <Row gutter={[0, 24]}>
-          <Col span={24}>
-            <Form.Item
-              label="Current Implementation"
-              name="current_implementation"
-            >
-              <Input.TextArea rows={5} />
-            </Form.Item>
-          </Col>
-          <Col span={24}>
-            <Form.Item
-              label="Enhancements"
-              name="enhancements"
-            >
-              <Input.TextArea rows={3} />
-            </Form.Item>
-          </Col>
-          <Col span={24}>
-            <Form.Item
-              label="Implementation Guidance"
-              name="implementation_guidance"
-            >
-              <Input.TextArea rows={3} />
-            </Form.Item>
-          </Col>
-        </Row>
-      ),
-    },
-    {
-      key: "3",
-      label: "Details",
-      children: (
-        <Row gutter={[0, 24]}>
-          <Col span={24}>
-            <Form.Item
-              label="Control Type"
-              name="control_type"
-            >
-              <Select
-                options={[
-                  { value: 'Preventive', label: 'Preventive' },
-                  { value: 'Detective', label: 'Detective' },
-                  { value: 'Corrective', label: 'Corrective' },
-                ]}
-              />
-            </Form.Item>
-          </Col>
-          <Col span={24}>
-            <Form.Item
-              label="Control Frequency"
-              name="control_frequency"
-            >
-              <Select
-                options={[
-                  { value: 'Continuous', label: 'Continuous' },
-                  { value: 'Daily', label: 'Daily' },
-                  { value: 'Weekly', label: 'Weekly' },
-                  { value: 'Monthly', label: 'Monthly' },
-                  { value: 'Quarterly', label: 'Quarterly' },
-                  { value: 'Annually', label: 'Annually' },
-                ]}
-              />
-            </Form.Item>
-          </Col>
-          <Col span={24}>
-            <Form.Item
-              label="Control Design"
-              name="control_design"
-            >
-              <Select
-                options={[
-                  { value: 'Manual', label: 'Manual' },
-                  { value: 'Automated', label: 'Automated' },
-                  { value: 'Hybrid', label: 'Hybrid' },
-                ]}
-              />
-            </Form.Item>
-          </Col>
-          <Col span={24}>
-            <Form.Item
-              label="Technological Enabler"
-              name="technological_enabler"
-            >
-              <Input />
-            </Form.Item>
-          </Col>
-          <Col span={24}>
-            <Form.Item
-              label="Management Level"
-              name="management_level"
-            >
-              <Select
-                options={[
-                  { value: 'Strategic', label: 'Strategic' },
-                  { value: 'Tactical', label: 'Tactical' },
-                  { value: 'Operational', label: 'Operational' },
-                ]}
-              />
-            </Form.Item>
-          </Col>
-        </Row>
-      ),
-    },
-    {
-      key: "4",
-      label: "Framework",
-      children: (
-        <Row gutter={[0, 24]}>
-          <Col span={24}>
-            <Form.Item
-              label="Framework Name"
-              name="framework_name"
-            >
-              <Input />
-            </Form.Item>
-          </Col>
-          <Col span={24}>
-            <Form.Item
-              label="Framework Version"
-              name="framework_version"
-            >
-              <Input />
-            </Form.Item>
-          </Col>
-          <Col span={24}>
-            <Form.Item
-              label="Framework Description"
-              name="framework_description"
-            >
-              <Input.TextArea rows={3} />
-            </Form.Item>
-          </Col>
-        </Row>
-      ),
-    },
-  ];
-
-  interface CreateResponse {
-    data?: {
-      id: string | number;
-    };
-  }
-
-  const handleCreate = async (values: any) => {
-    try {
-      const response: CreateResponse = await formProps.onFinish?.(values) || {};
-      if (response.data?.id) {
-        createChangeHistory({
-          resource: "change_history",
-          values: {
-            table_name: "controls",
-            record_id: response.data.id,
-            action: "Created",
-            change_details: JSON.stringify(values),
-            changed_by: identity?.id,
-          },
-        });
-      }
-    } catch (error) {
-      console.error("Error creating control:", error);
-    }
-  };
 
   return (
     <Create saveButtonProps={saveButtonProps}>
-      <Form {...formProps} onFinish={handleCreate} layout="vertical">
+      <Form {...formProps} layout="vertical">
         <Row gutter={24}>
           <Col span={18}>
-            <Tabs defaultActiveKey="1" items={tabItems} />
-          </Col>
-          <Col span={6}>
-            {renderRightSideBox()}
+            <Tabs defaultActiveKey="1">
+              <Tabs.TabPane tab="Overview" key="1">
+                <Form.Item
+                  name="control_id"
+                  label="Control ID"
+                  rules={controlIdRules}
+                  validateTrigger={['onChange', 'onBlur']}
+                  normalize={(value) => value?.trim()}
+                >
+                  <Input />
+                </Form.Item>
+
+                <Form.Item
+                  name="domain"
+                  label="Domain"
+                  rules={domainRules}
+                  validateTrigger={['onChange', 'onBlur']}
+                  normalize={(value) => value?.trim()}
+                >
+                  <Input />
+                </Form.Item>
+
+                <Form.Item
+                  name="control_requirements"
+                  label="Control Requirements"
+                  rules={controlRequirementsRules}
+                  validateTrigger={['onChange', 'onBlur']}
+                  normalize={(value) => value?.trim()}
+                >
+                  <TextArea 
+                    rows={5}
+                    maxLength={2000}
+                    showCount
+                  />
+                </Form.Item>
+
+                <Form.Item
+                  name="risk_statement"
+                  label="Risk Statement"
+                  rules={riskStatementRules}
+                  validateTrigger={['onChange', 'onBlur']}
+                  normalize={(value) => value?.trim()}
+                >
+                  <TextArea 
+                    rows={3}
+                    maxLength={2000}
+                    showCount
+                  />
+                </Form.Item>
+              </Tabs.TabPane>
+
+              <Tabs.TabPane tab="Implementation" key="2">
+                <Form.Item
+                  name="current_implementation"
+                  label="Current Implementation"
+                  rules={implementationRules}
+                  validateTrigger={['onChange', 'onBlur']}
+                  normalize={(value) => value?.trim()}
+                >
+                  <TextArea 
+                    rows={5}
+                    maxLength={2000}
+                    showCount
+                  />
+                </Form.Item>
+
+                <Form.Item
+                  name="enhancements"
+                  label="Enhancements"
+                  rules={implementationRules}
+                  validateTrigger={['onChange', 'onBlur']}
+                  normalize={(value) => value?.trim()}
+                >
+                  <TextArea 
+                    rows={3}
+                    maxLength={2000}
+                    showCount
+                  />
+                </Form.Item>
+
+                <Form.Item
+                  name="implementation_guidance"
+                  label="Implementation Guidance"
+                  rules={implementationRules}
+                  validateTrigger={['onChange', 'onBlur']}
+                  normalize={(value) => value?.trim()}
+                >
+                  <TextArea 
+                    rows={3}
+                    maxLength={2000}
+                    showCount
+                  />
+                </Form.Item>
+
+                <Form.Item
+                  name="technological_enabler"
+                  label="Technological Enabler"
+                  rules={frameworkRules}
+                  validateTrigger={['onChange', 'onBlur']}
+                  normalize={(value) => value?.trim()}
+                >
+                  <Input />
+                </Form.Item>
+              </Tabs.TabPane>
+
+              <Tabs.TabPane tab="Framework" key="3">
+                <Form.Item
+                  name="framework_name"
+                  label="Framework Name"
+                  rules={frameworkRules}
+                  validateTrigger={['onChange', 'onBlur']}
+                  normalize={(value) => value?.trim()}
+                >
+                  <Input />
+                </Form.Item>
+
+                <Form.Item
+                  name="framework_version"
+                  label="Framework Version"
+                  rules={frameworkRules}
+                  validateTrigger={['onChange', 'onBlur']}
+                  normalize={(value) => value?.trim()}
+                >
+                  <Input />
+                </Form.Item>
+
+                <Form.Item
+                  name="framework_description"
+                  label="Framework Description"
+                  rules={implementationRules}
+                  validateTrigger={['onChange', 'onBlur']}
+                  normalize={(value) => value?.trim()}
+                >
+                  <TextArea 
+                    rows={3}
+                    maxLength={2000}
+                    showCount
+                  />
+                </Form.Item>
+              </Tabs.TabPane>
+            </Tabs>
           </Col>
         </Row>
       </Form>

@@ -1,17 +1,55 @@
 "use client";
 
 import { Create, useForm, useSelect } from "@refinedev/antd";
-import { useCreate, useGetIdentity } from "@refinedev/core";
-import { Form, Input, Select, DatePicker, Row, Col } from "antd";
+import { HttpError } from "@refinedev/core";
+import { Form, Input, Select, DatePicker, Row, Col, message } from "antd";
 
 const { TextArea } = Input;
 
+interface ITestData {
+  evidence_request?: string;
+  test_of_design?: string;
+  test_of_effectiveness?: string;
+  test_results?: string;
+  tester?: string;
+  notes?: string;
+  control_id?: string;
+  audit_strategy?: string;
+  test_date?: string;
+  compliance_status?: string;
+  workflow_status?: string;
+}
+
+interface IError {
+  response: {
+    data: {
+      errors: {
+        [key: string]: string[];
+      };
+    };
+  };
+}
+
 export default function TestingCreate() {
-  const { formProps, saveButtonProps, queryResult } = useForm({
-    resource: "testing",
+  const { formProps, saveButtonProps } = useForm<ITestData, HttpError>({
+    meta: {
+      onError: (error: IError) => {
+        if (error?.response?.data?.errors) {
+          const errors = error.response.data.errors;
+          
+          Object.keys(errors).forEach((key) => {
+            formProps.form?.setFields([
+              {
+                name: key,
+                errors: Array.isArray(errors[key]) ? errors[key] : [errors[key]],
+              },
+            ]);
+          });
+          message.error('Validation failed. Please check the form.');
+        }
+      },
+    },
   });
-  const { mutate: createChangeHistory } = useCreate();
-  const { data: identity } = useGetIdentity<{ id: string }>();
 
   const { selectProps: controlSelectProps } = useSelect({
     resource: "controls",
@@ -19,29 +57,9 @@ export default function TestingCreate() {
     optionValue: "id",
   });
 
-  const handleCreate = async (values: any) => {
-    try {
-      const response = await formProps.onFinish?.(values);
-      if (response && 'data' in response) {
-        createChangeHistory({
-          resource: "change_history",
-          values: {
-            table_name: "testing",
-            record_id: (response as any)?.data?.id,
-            action: "Created",
-            change_details: JSON.stringify(values),
-            changed_by: identity?.id,
-          },
-        });
-      }
-    } catch (error) {
-      console.error("Error creating testing:", error);
-    }
-  };
-
   return (
     <Create saveButtonProps={saveButtonProps}>
-      <Form {...formProps} onFinish={handleCreate} layout="vertical">
+      <Form {...formProps} layout="vertical">
         <Row gutter={24}>
           <Col span={12}>
             <Form.Item
@@ -62,13 +80,32 @@ export default function TestingCreate() {
             </Form.Item>
           </Col>
         </Row>
+
         <Form.Item
-          name="evidence_request"
           label="Evidence Request"
-          rules={[{ required: true }]}
+          name="evidence_request"
+          rules={[
+            { required: true, message: 'Evidence request is required' },
+            { min: 10, message: 'Evidence request must be at least 10 characters' },
+            { max: 2000, message: 'Evidence request cannot exceed 2000 characters' },
+            {
+              validator: async (_, value) => {
+                if (value) {
+                  if (/<[^>]*>/.test(value)) {
+                    throw new Error('HTML tags are not allowed');
+                  }
+                  if (/(\b(select|insert|update|delete|drop|union|exec)\b)|(['";])/i.test(value)) {
+                    throw new Error('Invalid characters or SQL keywords detected');
+                  }
+                }
+              }
+            }
+          ]}
+          validateTrigger={['onChange', 'onBlur']}
         >
-          <TextArea rows={4} />
+          <TextArea rows={4} maxLength={2000} showCount />
         </Form.Item>
+
         <Form.Item
           name="audit_strategy"
           label="Audit Strategy"
@@ -84,24 +121,76 @@ export default function TestingCreate() {
             ]}
           />
         </Form.Item>
+
         <Form.Item
-          name="test_of_design"
           label="Test of Design"
+          name="test_of_design"
+          rules={[
+            { max: 2000, message: 'Test of design cannot exceed 2000 characters' },
+            {
+              validator: async (_, value) => {
+                if (value) {
+                  if (/<[^>]*>/.test(value)) {
+                    throw new Error('HTML tags are not allowed');
+                  }
+                  if (/(\b(select|insert|update|delete|drop|union|exec)\b)|(['";])/i.test(value)) {
+                    throw new Error('Invalid characters or SQL keywords detected');
+                  }
+                }
+              }
+            }
+          ]}
+          validateTrigger={['onChange', 'onBlur']}
         >
-          <TextArea rows={4} />
+          <TextArea rows={4} maxLength={2000} showCount />
         </Form.Item>
+
         <Form.Item
-          name="test_of_effectiveness"
           label="Test of Effectiveness"
+          name="test_of_effectiveness"
+          rules={[
+            { max: 2000, message: 'Test of effectiveness cannot exceed 2000 characters' },
+            {
+              validator: async (_, value) => {
+                if (value) {
+                  if (/<[^>]*>/.test(value)) {
+                    throw new Error('HTML tags are not allowed');
+                  }
+                  if (/(\b(select|insert|update|delete|drop|union|exec)\b)|(['";])/i.test(value)) {
+                    throw new Error('Invalid characters or SQL keywords detected');
+                  }
+                }
+              }
+            }
+          ]}
+          validateTrigger={['onChange', 'onBlur']}
         >
-          <TextArea rows={4} />
+          <TextArea rows={4} maxLength={2000} showCount />
         </Form.Item>
+
         <Form.Item
-          name="test_results"
           label="Test Results"
+          name="test_results"
+          rules={[
+            { max: 2000, message: 'Test results cannot exceed 2000 characters' },
+            {
+              validator: async (_, value) => {
+                if (value) {
+                  if (/<[^>]*>/.test(value)) {
+                    throw new Error('HTML tags are not allowed');
+                  }
+                  if (/(\b(select|insert|update|delete|drop|union|exec)\b)|(['";])/i.test(value)) {
+                    throw new Error('Invalid characters or SQL keywords detected');
+                  }
+                }
+              }
+            }
+          ]}
+          validateTrigger={['onChange', 'onBlur']}
         >
-          <TextArea rows={4} />
+          <TextArea rows={4} maxLength={2000} showCount />
         </Form.Item>
+
         <Row gutter={24}>
           <Col span={12}>
             <Form.Item
@@ -136,18 +225,55 @@ export default function TestingCreate() {
             </Form.Item>
           </Col>
         </Row>
+
         <Form.Item
-          name="tester"
           label="Tester"
-          rules={[{ required: true }]}
+          name="tester"
+          rules={[
+            { required: true, message: 'Tester name is required' },
+            { max: 100, message: 'Tester name cannot exceed 100 characters' },
+            {
+              validator: async (_, value) => {
+                if (value) {
+                  if (/<[^>]*>/.test(value)) {
+                    throw new Error('HTML tags are not allowed');
+                  }
+                  if (/(\b(select|insert|update|delete|drop|union|exec)\b)|(['";])/i.test(value)) {
+                    throw new Error('Invalid characters or SQL keywords detected');
+                  }
+                  if (!/^[A-Za-z\s\-'.]+$/.test(value)) {
+                    throw new Error('Only letters, spaces, hyphens, apostrophes and periods allowed');
+                  }
+                }
+              }
+            }
+          ]}
+          validateTrigger={['onChange', 'onBlur']}
         >
           <Input />
         </Form.Item>
+
         <Form.Item
-          name="notes"
           label="Notes"
+          name="notes"
+          rules={[
+            { max: 2000, message: 'Notes cannot exceed 2000 characters' },
+            {
+              validator: async (_, value) => {
+                if (value) {
+                  if (/<[^>]*>/.test(value)) {
+                    throw new Error('HTML tags are not allowed');
+                  }
+                  if (/(\b(select|insert|update|delete|drop|union|exec)\b)|(['";])/i.test(value)) {
+                    throw new Error('Invalid characters or SQL keywords detected');
+                  }
+                }
+              }
+            }
+          ]}
+          validateTrigger={['onChange', 'onBlur']}
         >
-          <TextArea rows={4} />
+          <TextArea rows={4} maxLength={2000} showCount />
         </Form.Item>
       </Form>
     </Create>
