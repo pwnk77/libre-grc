@@ -116,100 +116,78 @@ export default function RiskShow() {
     </Card>
   );
 
-  const tabItems = [
-    {
-      key: "1",
-      label: "Overview",
-      children: (
-        <Row gutter={[0, 24]}>
-          <Col span={24}>
-            <Title level={4}>Risk ID</Title>
-            <Text>{record?.risk_id}</Text>
-          </Col>
-          <Col span={24}>
-            <Title level={4}>Risk Summary</Title>
-            <Text>{record?.risk_summary}</Text>
-          </Col>
-          <Col span={24}>
-            <Title level={4}>Description</Title>
-            <MarkdownField value={record?.description} />
-          </Col>
-        </Row>
-      ),
-    },
-    {
-      key: "2",
-      label: "Risk Assessment",
-      children: (
-        <Row gutter={[0, 24]}>
-          <Col span={24}>
-            <Title level={4}>Impact Type</Title>
-            <Text>{record?.impact_type}</Text>
-          </Col>
-          <Col span={24}>
-            <Title level={4}>Impact</Title>
-            <Tag color={getImpactColor(record?.impact)}>{record?.impact}</Tag>
-          </Col>
-          <Col span={24}>
-            <Title level={4}>Likelihood</Title>
-            <Tag color={getLikelihoodColor(record?.likelihood)}>{record?.likelihood}</Tag>
-          </Col>
-          <Col span={24}>
-            <Title level={4}>Inherent Risk Level</Title>
-            <Tag color={getRiskLevelColor(record?.inherent_risk_level)}>{record?.inherent_risk_level}</Tag>
-          </Col>
-        </Row>
-      ),
-    },
-    {
-      key: "3",
-      label: "Risk Treatment",
-      children: (
-        <Row gutter={[0, 24]}>
-          <Col span={24}>
-            <Title level={4}>Risk Response</Title>
-            <Tag color={getRiskResponseColor(record?.risk_response)}>{record?.risk_response}</Tag>
-          </Col>
-          <Col span={24}>
-            <Title level={4}>Residual Risk Level</Title>
-            <Tag color={getRiskLevelColor(record?.residual_risk_level)}>{record?.residual_risk_level}</Tag>
-          </Col>
-          <Col span={24}>
-            <Title level={4}>Compensating Controls</Title>
-            <MarkdownField value={record?.compensating_controls} />
-          </Col>
-          <Col span={24}>
-            <Title level={4}>Mitigating Controls</Title>
-            <MarkdownField value={record?.mitigating_controls} />
-          </Col>
-          <Col span={24}>
-            <Title level={4}>Risk Acceptance Justifications</Title>
-            <MarkdownField value={record?.risk_acceptance_justifications} />
-          </Col>
-        </Row>
-      ),
-    },
-    {
-      key: "4",
-      label: "Tasks",
-      children: (
-        <TasksTab riskId={params.id as string} />
-      ),
-    },
-    {
-      key: "5",
-      label: "Assets",
-      children: (
-        <AssetsTab riskId={params.id as string} />
-      ),
-    },
-  ];
-
   return (
     <Show isLoading={isLoading} title="Risk Details">
       <Row gutter={24}>
         <Col span={18}>
-          <Tabs defaultActiveKey="1" items={tabItems} />
+          <Tabs defaultActiveKey="1">
+            <TabPane tab="Overview" key="1">
+              <Row gutter={[0, 24]}>
+                <Col span={24}>
+                  <Title level={4}>Risk ID</Title>
+                  <Text>{record?.risk_id}</Text>
+                </Col>
+                <Col span={24}>
+                  <Title level={4}>Risk Summary</Title>
+                  <Text>{record?.risk_summary}</Text>
+                </Col>
+                <Col span={24}>
+                  <Title level={4}>Description</Title>
+                  <MarkdownField value={record?.description} />
+                </Col>
+              </Row>
+            </TabPane>
+            <TabPane tab="Risk Assessment" key="2">
+              <Row gutter={[0, 24]}>
+                <Col span={24}>
+                  <Title level={4}>Impact Type</Title>
+                  <Text>{record?.impact_type}</Text>
+                </Col>
+                <Col span={24}>
+                  <Title level={4}>Impact</Title>
+                  <Tag color={getImpactColor(record?.impact)}>{record?.impact}</Tag>
+                </Col>
+                <Col span={24}>
+                  <Title level={4}>Likelihood</Title>
+                  <Tag color={getLikelihoodColor(record?.likelihood)}>{record?.likelihood}</Tag>
+                </Col>
+                <Col span={24}>
+                  <Title level={4}>Inherent Risk Level</Title>
+                  <Tag color={getRiskLevelColor(record?.inherent_risk_level)}>{record?.inherent_risk_level}</Tag>
+                </Col>
+              </Row>
+            </TabPane>
+            <TabPane tab="Risk Treatment" key="3">
+              <Row gutter={[0, 24]}>
+                <Col span={24}>
+                  <Title level={4}>Risk Response</Title>
+                  <Tag color={getRiskResponseColor(record?.risk_response)}>{record?.risk_response}</Tag>
+                </Col>
+                <Col span={24}>
+                  <Title level={4}>Residual Risk Level</Title>
+                  <Tag color={getRiskLevelColor(record?.residual_risk_level)}>{record?.residual_risk_level}</Tag>
+                </Col>
+                <Col span={24}>
+                  <Title level={4}>Compensating Controls</Title>
+                  <MarkdownField value={record?.compensating_controls} />
+                </Col>
+                <Col span={24}>
+                  <Title level={4}>Mitigating Controls</Title>
+                  <MarkdownField value={record?.mitigating_controls} />
+                </Col>
+                <Col span={24}>
+                  <Title level={4}>Risk Acceptance Justifications</Title>
+                  <MarkdownField value={record?.risk_acceptance_justifications} />
+                </Col>
+              </Row>
+            </TabPane>
+            <TabPane tab="Tasks" key="4">
+              <TasksTab riskId={params.id as string} />
+            </TabPane>
+            <TabPane tab="Assets" key="5">
+              <AssetsTab riskId={params.id as string} />
+            </TabPane>
+          </Tabs>
           <Card title="Attachments" style={{ marginTop: 20, borderRadius: 8 }}>
             {renderAttachments()}
           </Card>
