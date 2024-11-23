@@ -1,200 +1,146 @@
 "use client";
 
 import { Create, useForm } from "@refinedev/antd";
-import { BaseKey, useCreate, useGetIdentity, useList } from "@refinedev/core";
-import { Form, Input, Select, DatePicker, Typography, Tabs, Card, Row, Col } from "antd";
-import { useState, useEffect } from "react";
+import { HttpError } from "@refinedev/core";
+import { Form, Input, Select, DatePicker, Typography, Tabs, Card, Row, Col, message } from "antd";
 
-const { Title, Text } = Typography;
 const { TextArea } = Input;
 
-export default function AuditCreate() {
-  const { formProps, saveButtonProps, queryResult } = useForm({
-    resource: "audits",
-  });
-  const { mutate: createChangeHistory } = useCreate();
-  const { data: identity } = useGetIdentity<{ id: string }>();
-
-  const [users, setUsers] = useState<{ value: BaseKey; label: string }[]>([]);
-
-  const { data: userData, isLoading: userLoading } = useList({
-    resource: "users",
-  });
-
-  useEffect(() => {
-    if (userData?.data) {
-      const formattedUsers = userData.data.map(user => ({
-        value: user.id,
-        label: user.full_name,
-      }));
-      setUsers(formattedUsers as { value: BaseKey; label: string }[]);
-    }
-  }, [userData]);
-
-  const renderRightSideBox = () => (
-    <Card title="Contextual Information" style={{ marginBottom: 20, borderRadius: 8 }}>
-      <Row gutter={[16, 24]}>
-        <Col span={24}>
-          <Form.Item label="Audit Partner" name="audit_partner">
-            <Select options={users} loading={userLoading} />
-          </Form.Item>
-        </Col>
-        <Col span={24}>
-          <Form.Item label="Engagement Lead" name="engagement_lead">
-            <Select options={users} loading={userLoading} />
-          </Form.Item>
-        </Col>
-        <Col span={24}>
-          <Form.Item label="Workflow Status" name="workflow_status">
-            <Select
-              options={[
-                { value: "Planned", label: "Planned" },
-                { value: "In Progress", label: "In Progress" },
-                { value: "Reporting", label: "Reporting" },
-                { value: "Closed", label: "Closed" },
-              ]}
-            />
-          </Form.Item>
-        </Col>
-      </Row>
-    </Card>
-  );
-
-  const tabItems = [
-    {
-      key: "1",
-      label: "Overview",
-      children: (
-        <Row gutter={[0, 24]}>
-          <Col span={24}>
-            <Form.Item
-              label="Audit Name"
-              name="audit_name"
-              rules={[{ required: true }]}
-            >
-              <Input />
-            </Form.Item>
-          </Col>
-          <Col span={24}>
-            <Form.Item
-              label="Scope"
-              name="scope"
-            >
-              <TextArea rows={3} />
-            </Form.Item>
-          </Col>
-          <Col span={24}>
-            <Form.Item
-              label="Description"
-              name="description"
-            >
-              <TextArea rows={5} />
-            </Form.Item>
-          </Col>
-          <Col span={24}>
-            <Form.Item
-              label="Related Circulars"
-              name="related_circulars"
-            >
-              <Select mode="tags" style={{ width: '100%' }} placeholder="Enter related circulars" />
-            </Form.Item>
-          </Col>
-        </Row>
-      ),
-    },
-    {
-      key: "2",
-      label: "Dates",
-      children: (
-        <Row gutter={[0, 24]}>
-          <Col span={12}>
-            <Form.Item
-              label="Planned Start Date"
-              name="planned_start_date"
-            >
-              <DatePicker />
-            </Form.Item>
-          </Col>
-          <Col span={12}>
-            <Form.Item
-              label="Planned End Date"
-              name="planned_end_date"
-            >
-              <DatePicker />
-            </Form.Item>
-          </Col>
-          <Col span={12}>
-            <Form.Item
-              label="Actual Start Date"
-              name="actual_start_date"
-            >
-              <DatePicker />
-            </Form.Item>
-          </Col>
-          <Col span={12}>
-            <Form.Item
-              label="Actual End Date"
-              name="actual_end_date"
-            >
-              <DatePicker />
-            </Form.Item>
-          </Col>
-        </Row>
-      ),
-    },
-    {
-      key: "3",
-      label: "Stakeholders",
-      children: (
-        <Row gutter={[0, 24]}>
-          <Col span={24}>
-            <Form.Item
-              label="Key Stakeholders"
-              name="key_stakeholders"
-            >
-              <Select mode="tags" style={{ width: '100%' }} placeholder="Enter key stakeholders" />
-            </Form.Item>
-          </Col>
-        </Row>
-      ),
-    },
-  ];
-
-  interface CreateResponse {
-    data?: {
-      id: string | number;
+interface IError {
+  response: {
+    data: {
+      errors: {
+        [key: string]: string[];
+      };
     };
-  }
-
-  const handleCreate = async (values: any) => {
-    try {
-      const response: CreateResponse = await formProps.onFinish?.(values) || {};
-      if (response.data?.id) {
-        createChangeHistory({
-          resource: "change_history",
-          values: {
-            table_name: "audits",
-            record_id: response.data.id,
-            action: "Created",
-            change_details: JSON.stringify(values),
-            changed_by: identity?.id,
-          },
-        });
-      }
-    } catch (error) {
-      console.error("Error creating audit:", error);
-    }
   };
+}
+
+// Add validation rules
+const auditNameRules = [
+  { required: true, message: 'Audit name is required' },
+  { min: 3, message: 'Audit name must be at least 3 characters' },
+  { max: 200, message: 'Audit name cannot exceed 200 characters' },
+  {
+    validator: async (_: any, value: string) => {
+      if (value) {
+        if (/<[^>]*>/.test(value)) {
+          throw new Error('HTML tags are not allowed');
+        }
+        if (/(\b(select|insert|update|delete|drop|union|exec)\b)|(['";])/i.test(value)) {
+          throw new Error('Invalid characters or SQL keywords detected');
+        }
+        if (!/^[A-Za-z0-9\s\-_.,()]+$/.test(value)) {
+          throw new Error('Only letters, numbers, spaces, and basic punctuation allowed');
+        }
+      }
+      return Promise.resolve();
+    }
+  }
+];
+
+const scopeRules = [
+  { max: 2000, message: 'Scope cannot exceed 2000 characters' },
+  {
+    validator: async (_: any, value: string) => {
+      if (value) {
+        if (/<[^>]*>/.test(value)) {
+          throw new Error('HTML tags are not allowed');
+        }
+        if (/(\b(select|insert|update|delete|drop|union|exec)\b)|(['";])/i.test(value)) {
+          throw new Error('Invalid characters or SQL keywords detected');
+        }
+      }
+      return Promise.resolve();
+    }
+  }
+];
+
+const descriptionRules = [
+  { max: 2000, message: 'Description cannot exceed 2000 characters' },
+  {
+    validator: async (_: any, value: string) => {
+      if (value) {
+        if (/<[^>]*>/.test(value)) {
+          throw new Error('HTML tags are not allowed');
+        }
+        if (/(\b(select|insert|update|delete|drop|union|exec)\b)|(['";])/i.test(value)) {
+          throw new Error('Invalid characters or SQL keywords detected');
+        }
+      }
+      return Promise.resolve();
+    }
+  }
+];
+
+export default function AuditCreate() {
+  const { formProps, saveButtonProps } = useForm({
+    meta: {
+      onError: (error: IError) => {
+        if (error?.response?.data?.errors) {
+          const errors = error.response.data.errors;
+          
+          Object.keys(errors).forEach((key) => {
+            formProps.form?.setFields([
+              {
+                name: key,
+                errors: Array.isArray(errors[key]) ? errors[key] : [errors[key]],
+              },
+            ]);
+          });
+          message.error('Validation failed. Please check the form.');
+        }
+      },
+    },
+  });
 
   return (
     <Create saveButtonProps={saveButtonProps}>
-      <Form {...formProps} onFinish={handleCreate} layout="vertical">
+      <Form {...formProps} layout="vertical">
         <Row gutter={24}>
           <Col span={18}>
-            <Tabs defaultActiveKey="1" items={tabItems} />
-          </Col>
-          <Col span={6}>
-            {renderRightSideBox()}
+            <Tabs defaultActiveKey="1">
+              <Tabs.TabPane tab="Overview" key="1">
+                <Form.Item
+                  label="Audit Name"
+                  name="audit_name"
+                  rules={auditNameRules}
+                  validateTrigger={['onChange', 'onBlur']}
+                  normalize={(value) => value?.trim()}
+                >
+                  <Input />
+                </Form.Item>
+
+                <Form.Item
+                  label="Scope"
+                  name="scope"
+                  rules={scopeRules}
+                  validateTrigger={['onChange', 'onBlur']}
+                  normalize={(value) => value?.trim()}
+                >
+                  <TextArea 
+                    rows={3}
+                    maxLength={2000}
+                    showCount
+                  />
+                </Form.Item>
+
+                <Form.Item
+                  label="Description"
+                  name="description"
+                  rules={descriptionRules}
+                  validateTrigger={['onChange', 'onBlur']}
+                  normalize={(value) => value?.trim()}
+                >
+                  <TextArea 
+                    rows={5}
+                    maxLength={2000}
+                    showCount
+                  />
+                </Form.Item>
+              </Tabs.TabPane>
+              {/* Rest of your tabs */}
+            </Tabs>
           </Col>
         </Row>
       </Form>

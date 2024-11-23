@@ -10,10 +10,83 @@ import {
   useSelect,
   CreateButton,
 } from "@refinedev/antd";
-import { BaseKey, BaseRecord, CrudFilters, useNavigation } from "@refinedev/core";
-import { Space, Table, Checkbox, Button, Popover, Select, Input } from "antd";
+import { BaseKey, BaseRecord, CrudFilters, useNavigation, useList } from "@refinedev/core";
+import { Space, Table, Checkbox, Button, Popover, Select, Input, Tag, AutoComplete, Typography } from "antd";
 import { useState, useEffect } from "react";
-import { SettingOutlined } from "@ant-design/icons";
+import { SettingOutlined, SearchOutlined } from "@ant-design/icons";
+
+const { Text } = Typography;
+
+interface ISearchItem {
+  id: string;
+  policy_name: string;
+  purpose?: string;
+  prepared_by?: string;
+  workflow_status: string;
+  review_date?: string;
+}
+
+interface IOptionGroup {
+  key: string;
+  value: string;
+  label: React.ReactNode;
+}
+
+interface IOptions {
+  label: React.ReactNode;
+  options: IOptionGroup[];
+}
+
+const renderTitle = (title: string) => (
+  <Text strong style={{ fontSize: "16px" }}>
+    {title}
+  </Text>
+);
+
+const renderItem = (item: ISearchItem): IOptionGroup => ({
+  key: item.id,
+  value: item.policy_name,
+  label: (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+        <Text strong>{item.policy_name}</Text>
+        <Tag color={getWorkflowStatusColor(item.workflow_status)}>{item.workflow_status}</Tag>
+      </div>
+      {item.purpose && (
+        <Text type="secondary" style={{ fontSize: '12px' }}>
+          {item.purpose.length > 100 
+            ? `${item.purpose.slice(0, 100)}...` 
+            : item.purpose}
+        </Text>
+      )}
+      <div style={{ marginTop: 4 }}>
+        <Space>
+          {item.prepared_by && (
+            <Text type="secondary">By: {item.prepared_by}</Text>
+          )}
+          {item.review_date && (
+            <Text type="secondary">Review: {item.review_date}</Text>
+          )}
+        </Space>
+      </div>
+    </div>
+  ),
+});
+
+const getWorkflowStatusColor = (status: string) => {
+  switch (status) {
+    case 'Draft':
+      return 'default';
+    case 'Under Review':
+      return 'processing';
+    case 'Approved':
+      return 'success';
+    case 'Published':
+      return 'blue';
+    default:
+      return 'default';
+  }
+};
 
 export default function PoliciesList() {
   const [selectedColumns, setSelectedColumns] = useState<string[]>([
@@ -23,7 +96,8 @@ export default function PoliciesList() {
     "workflow_status",
     "created_at",
   ]);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [value, setValue] = useState<string>("");
+  const [options, setOptions] = useState<IOptions[]>([]);
 
   const { show } = useNavigation();
 
@@ -55,14 +129,14 @@ export default function PoliciesList() {
         workflow_status: string;
       };
 
-      if (searchTerm) {
+      if (value) {
         filters.push({
           operator: "or",
           value: [
-            { field: "policy_name", operator: "contains", value: searchTerm },
-            { field: "prepared_by", operator: "contains", value: searchTerm },
-            { field: "purpose", operator: "contains", value: searchTerm },
-          ],
+            { field: "policy_name", operator: "contains", value },
+            { field: "purpose", operator: "contains", value },
+            { field: "prepared_by", operator: "contains", value }
+          ]
         });
       }
 
@@ -78,14 +152,44 @@ export default function PoliciesList() {
     },
   });
 
-  // Clear search on page reload
+  const { refetch: refetchPolicies } = useList<ISearchItem>({
+    resource: "policies",
+    filters: [
+      {
+        operator: "or",
+        value: [
+          { field: "policy_name", operator: "contains", value },
+          { field: "purpose", operator: "contains", value },
+          { field: "prepared_by", operator: "contains", value }
+        ]
+      }
+    ],
+    queryOptions: {
+      enabled: false,
+      onSuccess: (data) => {
+        const policyOptionGroup = data.data.map(renderItem);
+        if (policyOptionGroup.length > 0) {
+          setOptions([
+            {
+              label: renderTitle("Policies"),
+              options: policyOptionGroup,
+            },
+          ]);
+        }
+      },
+    },
+  });
+
   useEffect(() => {
-    setSearchTerm("");
-  }, []);
+    setOptions([]);
+    if (value.length > 2) {
+      refetchPolicies();
+    }
+  }, [value]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newSearchTerm = e.target.value;
-    setSearchTerm(newSearchTerm);
+    setValue(newSearchTerm);
     
     if (newSearchTerm === "") {
       setFilters([], "replace");
@@ -211,6 +315,33 @@ export default function PoliciesList() {
     });
   };
 
+  const renderSearch = () => (
+    <div style={{ 
+      width: 500, 
+      marginBottom: 16,
+      marginLeft: 'auto'  // Push to right side
+    }}>
+      <AutoComplete<string, IOptions>
+        style={{ width: "100%" }}
+        options={options}
+        onSearch={(value: string) => setValue(value)}
+        onSelect={(value, option: any) => {
+          if (option.key) {
+            show("policies", option.key);
+          }
+        }}
+        notFoundContent="No results found"
+        dropdownMatchSelectWidth={true}
+      >
+        <Input
+          placeholder="Search policies by name, purpose, or prepared by..."
+          suffix={<SearchOutlined />}
+          size="large"
+        />
+      </AutoComplete>
+    </div>
+  );
+
   return (
     <List
       headerButtons={[
@@ -226,14 +357,7 @@ export default function PoliciesList() {
         </Popover>,
       ]}
     >
-      <Input.Search
-        placeholder="Search policies..."
-        value={searchTerm}
-        onChange={handleSearchChange}
-        onSearch={handleSearch}
-        style={{ marginBottom: 16 }}
-        allowClear
-      />
+      {renderSearch()}
       <Table 
         {...tableProps} 
         rowKey="id"

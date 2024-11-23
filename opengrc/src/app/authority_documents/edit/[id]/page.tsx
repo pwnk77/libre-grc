@@ -1,64 +1,148 @@
 "use client";
 
 import { Edit, useForm } from "@refinedev/antd";
-import { useCreate, useGetIdentity } from "@refinedev/core";
+import { HttpError } from "@refinedev/core";
+import { Form, Input, Select, DatePicker, Card, Row, Col, message } from "antd";
 import { useParams } from "next/navigation";
-import { Form, Input, Select, DatePicker, Card, Row, Col } from "antd";
-import { Activity } from "../../activity";
-import { useAttachments } from "../../attachments";
 import dayjs from 'dayjs';
 
 const { TextArea } = Input;
+
+interface IError {
+  response: {
+    data: {
+      errors: {
+        [key: string]: string[];
+      };
+    };
+  };
+}
+
+// Add validation rules (same as create page)
+const titleRules = [
+  { required: true, message: 'Title is required' },
+  { min: 3, message: 'Title must be at least 3 characters' },
+  { max: 200, message: 'Title cannot exceed 200 characters' },
+  {
+    validator: async (_: any, value: string) => {
+      if (value) {
+        if (/<[^>]*>/.test(value)) {
+          throw new Error('HTML tags are not allowed');
+        }
+        if (/(\b(select|insert|update|delete|drop|union|exec)\b)|(['";])/i.test(value)) {
+          throw new Error('Invalid characters or SQL keywords detected');
+        }
+      }
+      return Promise.resolve();
+    }
+  }
+];
+
+const identifierRules = [
+  { max: 100, message: 'Identifier cannot exceed 100 characters' },
+  {
+    validator: async (_: any, value: string) => {
+      if (value) {
+        if (/<[^>]*>/.test(value)) {
+          throw new Error('HTML tags are not allowed');
+        }
+        if (/(\b(select|insert|update|delete|drop|union|exec)\b)|(['";])/i.test(value)) {
+          throw new Error('Invalid characters or SQL keywords detected');
+        }
+        if (!/^[A-Za-z0-9-_\.]+$/.test(value)) {
+          throw new Error('Only letters, numbers, hyphens, underscores and dots allowed');
+        }
+      }
+      return Promise.resolve();
+    }
+  }
+];
+
+const issuingBodyRules = [
+  { max: 200, message: 'Issuing body cannot exceed 200 characters' },
+  {
+    validator: async (_: any, value: string) => {
+      if (value) {
+        if (/<[^>]*>/.test(value)) {
+          throw new Error('HTML tags are not allowed');
+        }
+        if (/(\b(select|insert|update|delete|drop|union|exec)\b)|(['";])/i.test(value)) {
+          throw new Error('Invalid characters or SQL keywords detected');
+        }
+      }
+      return Promise.resolve();
+    }
+  }
+];
+
+const versionRules = [
+  { max: 50, message: 'Version cannot exceed 50 characters' },
+  {
+    validator: async (_: any, value: string) => {
+      if (value) {
+        if (/<[^>]*>/.test(value)) {
+          throw new Error('HTML tags are not allowed');
+        }
+        if (/(\b(select|insert|update|delete|drop|union|exec)\b)|(['";])/i.test(value)) {
+          throw new Error('Invalid characters or SQL keywords detected');
+        }
+        if (!/^[A-Za-z0-9\._-]+$/.test(value)) {
+          throw new Error('Only letters, numbers, dots, hyphens and underscores allowed');
+        }
+      }
+      return Promise.resolve();
+    }
+  }
+];
+
+const descriptionRules = [
+  { max: 2000, message: 'Description cannot exceed 2000 characters' },
+  {
+    validator: async (_: any, value: string) => {
+      if (value) {
+        if (/<[^>]*>/.test(value)) {
+          throw new Error('HTML tags are not allowed');
+        }
+        if (/(\b(select|insert|update|delete|drop|union|exec)\b)|(['";])/i.test(value)) {
+          throw new Error('Invalid characters or SQL keywords detected');
+        }
+      }
+      return Promise.resolve();
+    }
+  }
+];
 
 export default function AuthorityDocumentEdit() {
   const params = useParams();
   const { formProps, saveButtonProps, queryResult } = useForm({
     resource: "authority_documents",
     id: params.id as string,
+    meta: {
+      onError: (error: IError) => {
+        if (error?.response?.data?.errors) {
+          const errors = error.response.data.errors;
+          
+          Object.keys(errors).forEach((key) => {
+            formProps.form?.setFields([
+              {
+                name: key,
+                errors: Array.isArray(errors[key]) ? errors[key] : [errors[key]],
+              },
+            ]);
+          });
+          message.error('Validation failed. Please check the form.');
+        }
+      },
+    },
   });
-
-  const { mutate: createChangeHistory } = useCreate();
-  const { data: identity } = useGetIdentity<{ id: string }>();
 
   const { data, isLoading } = queryResult || {};
   const record = data?.data;
-
-  const { renderAttachments } = useAttachments(params.id as string);
-
-  const handleUpdate = async (values: any) => {
-    try {
-      const response = await formProps.onFinish?.(values);
-      if (response && 'data' in response) {
-        const changedFields = Object.keys(values).reduce((acc: Record<string, any>, key) => {
-          if (JSON.stringify(values[key]) !== JSON.stringify(record?.[key])) {
-            acc[key] = values[key];
-          }
-          return acc;
-        }, {});
-
-        if (Object.keys(changedFields).length > 0) {
-          createChangeHistory({
-            resource: "change_history",
-            values: {
-              table_name: "authority_documents",
-              record_id: params.id,
-              action: "Updated",
-              change_details: JSON.stringify(changedFields),
-              changed_by: identity?.id,
-            },
-          });
-        }
-      }
-    } catch (error) {
-      console.error("Error updating authority document:", error);
-    }
-  };
 
   return (
     <Edit saveButtonProps={saveButtonProps}>
       <Form 
         {...formProps} 
-        onFinish={handleUpdate}
         layout="vertical"
         initialValues={{
           ...record,
@@ -67,13 +151,15 @@ export default function AuthorityDocumentEdit() {
       >
         <Row gutter={24}>
           <Col span={18}>
-            <Card title="Authority Document Details" style={{ marginBottom: 20, borderRadius: 8 }}>
+            <Card title="Authority Document Details">
               <Row gutter={16}>
                 <Col span={12}>
                   <Form.Item
                     label="Title"
                     name="title"
-                    rules={[{ required: true }]}
+                    rules={titleRules}
+                    validateTrigger={['onChange', 'onBlur']}
+                    normalize={(value) => value?.trim()}
                   >
                     <Input />
                   </Form.Item>
@@ -82,6 +168,7 @@ export default function AuthorityDocumentEdit() {
                   <Form.Item
                     label="Type"
                     name="type"
+                    rules={[{ required: true }]}
                   >
                     <Select>
                       <Select.Option value="Circular">Circular</Select.Option>
@@ -94,6 +181,9 @@ export default function AuthorityDocumentEdit() {
                   <Form.Item
                     label="Identifier"
                     name="identifier"
+                    rules={identifierRules}
+                    validateTrigger={['onChange', 'onBlur']}
+                    normalize={(value) => value?.trim()}
                   >
                     <Input />
                   </Form.Item>
@@ -102,6 +192,9 @@ export default function AuthorityDocumentEdit() {
                   <Form.Item
                     label="Issuing Body"
                     name="issuing_body"
+                    rules={issuingBodyRules}
+                    validateTrigger={['onChange', 'onBlur']}
+                    normalize={(value) => value?.trim()}
                   >
                     <Input />
                   </Form.Item>
@@ -110,41 +203,29 @@ export default function AuthorityDocumentEdit() {
                   <Form.Item
                     label="Version"
                     name="version"
+                    rules={versionRules}
+                    validateTrigger={['onChange', 'onBlur']}
+                    normalize={(value) => value?.trim()}
                   >
                     <Input />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item
-                    label="Publication Date"
-                    name="publication_date"
-                  >
-                    <DatePicker style={{ width: '100%' }} />
                   </Form.Item>
                 </Col>
                 <Col span={24}>
                   <Form.Item
                     label="Description"
                     name="description"
+                    rules={descriptionRules}
+                    validateTrigger={['onChange', 'onBlur']}
+                    normalize={(value) => value?.trim()}
                   >
-                    <TextArea rows={4} />
+                    <TextArea 
+                      rows={4}
+                      maxLength={2000}
+                      showCount
+                    />
                   </Form.Item>
                 </Col>
               </Row>
-            </Card>
-            <Card title="Attachments" style={{ marginTop: 20, borderRadius: 8 }}>
-              {renderAttachments()}
-            </Card>
-            <Activity parentId={params.id as string} />
-          </Col>
-          <Col span={6}>
-            <Card title="Metadata" style={{ marginBottom: 20, borderRadius: 8 }}>
-              <Form.Item label="Created At" name="created_at">
-                <Input disabled />
-              </Form.Item>
-              <Form.Item label="Updated At" name="updated_at">
-                <Input disabled />
-              </Form.Item>
             </Card>
           </Col>
         </Row>

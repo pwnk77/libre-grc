@@ -1,51 +1,148 @@
 "use client";
 
 import { Create, useForm } from "@refinedev/antd";
-import { useCreate, useGetIdentity, BaseRecord, CreateResponse } from "@refinedev/core";
-import { Form, Input, Select, DatePicker, Card, Row, Col } from "antd";
+import { HttpError } from "@refinedev/core";
+import { Form, Input, Select, DatePicker, Card, Row, Col, message } from "antd";
 
 const { TextArea } = Input;
 
-export default function AuthorityDocumentCreate() {
-  const { formProps, saveButtonProps, queryResult } = useForm({
-    resource: "authority_documents",
-  });
-  const { mutate: createChangeHistory } = useCreate();
-  const { data: identity } = useGetIdentity<{ id: string }>();
+interface IError {
+  response: {
+    data: {
+      errors: {
+        [key: string]: string[];
+      };
+    };
+  };
+}
 
-  const handleCreate = async (values: any) => {
-    try {
-      const response = await formProps.onFinish?.(values);
-      if (response && 'data' in response) {
-        const createResponse = response as CreateResponse<BaseRecord>;
-        if (createResponse.data.id) {
-          createChangeHistory({
-            resource: "change_history",
-            values: {
-              table_name: "authority_documents",
-              record_id: createResponse.data.id,
-              action: "Created",
-              change_details: JSON.stringify(values),
-              changed_by: identity?.id,
-            },
-          });
+// Add validation rules
+const titleRules = [
+  { required: true, message: 'Title is required' },
+  { min: 3, message: 'Title must be at least 3 characters' },
+  { max: 200, message: 'Title cannot exceed 200 characters' },
+  {
+    validator: async (_: any, value: string) => {
+      if (value) {
+        if (/<[^>]*>/.test(value)) {
+          throw new Error('HTML tags are not allowed');
+        }
+        if (/(\b(select|insert|update|delete|drop|union|exec)\b)|(['";])/i.test(value)) {
+          throw new Error('Invalid characters or SQL keywords detected');
         }
       }
-    } catch (error) {
-      console.error("Error creating authority document:", error);
+      return Promise.resolve();
     }
-  };
+  }
+];
+
+const identifierRules = [
+  { max: 100, message: 'Identifier cannot exceed 100 characters' },
+  {
+    validator: async (_: any, value: string) => {
+      if (value) {
+        if (/<[^>]*>/.test(value)) {
+          throw new Error('HTML tags are not allowed');
+        }
+        if (/(\b(select|insert|update|delete|drop|union|exec)\b)|(['";])/i.test(value)) {
+          throw new Error('Invalid characters or SQL keywords detected');
+        }
+        if (!/^[A-Za-z0-9-_\.]+$/.test(value)) {
+          throw new Error('Only letters, numbers, hyphens, underscores and dots allowed');
+        }
+      }
+      return Promise.resolve();
+    }
+  }
+];
+
+const issuingBodyRules = [
+  { max: 200, message: 'Issuing body cannot exceed 200 characters' },
+  {
+    validator: async (_: any, value: string) => {
+      if (value) {
+        if (/<[^>]*>/.test(value)) {
+          throw new Error('HTML tags are not allowed');
+        }
+        if (/(\b(select|insert|update|delete|drop|union|exec)\b)|(['";])/i.test(value)) {
+          throw new Error('Invalid characters or SQL keywords detected');
+        }
+      }
+      return Promise.resolve();
+    }
+  }
+];
+
+const versionRules = [
+  { max: 50, message: 'Version cannot exceed 50 characters' },
+  {
+    validator: async (_: any, value: string) => {
+      if (value) {
+        if (/<[^>]*>/.test(value)) {
+          throw new Error('HTML tags are not allowed');
+        }
+        if (/(\b(select|insert|update|delete|drop|union|exec)\b)|(['";])/i.test(value)) {
+          throw new Error('Invalid characters or SQL keywords detected');
+        }
+        if (!/^[A-Za-z0-9\._-]+$/.test(value)) {
+          throw new Error('Only letters, numbers, dots, hyphens and underscores allowed');
+        }
+      }
+      return Promise.resolve();
+    }
+  }
+];
+
+const descriptionRules = [
+  { max: 2000, message: 'Description cannot exceed 2000 characters' },
+  {
+    validator: async (_: any, value: string) => {
+      if (value) {
+        if (/<[^>]*>/.test(value)) {
+          throw new Error('HTML tags are not allowed');
+        }
+        if (/(\b(select|insert|update|delete|drop|union|exec)\b)|(['";])/i.test(value)) {
+          throw new Error('Invalid characters or SQL keywords detected');
+        }
+      }
+      return Promise.resolve();
+    }
+  }
+];
+
+export default function AuthorityDocumentCreate() {
+  const { formProps, saveButtonProps } = useForm({
+    meta: {
+      onError: (error: IError) => {
+        if (error?.response?.data?.errors) {
+          const errors = error.response.data.errors;
+          
+          Object.keys(errors).forEach((key) => {
+            formProps.form?.setFields([
+              {
+                name: key,
+                errors: Array.isArray(errors[key]) ? errors[key] : [errors[key]],
+              },
+            ]);
+          });
+          message.error('Validation failed. Please check the form.');
+        }
+      },
+    },
+  });
 
   return (
     <Create saveButtonProps={saveButtonProps}>
-      <Form {...formProps} onFinish={handleCreate} layout="vertical">
-        <Card title="Authority Document Details" style={{ marginBottom: 20, borderRadius: 8 }}>
+      <Form {...formProps} layout="vertical">
+        <Card title="Authority Document Details">
           <Row gutter={16}>
             <Col span={12}>
               <Form.Item
                 label="Title"
                 name="title"
-                rules={[{ required: true }]}
+                rules={titleRules}
+                validateTrigger={['onChange', 'onBlur']}
+                normalize={(value) => value?.trim()}
               >
                 <Input />
               </Form.Item>
@@ -54,6 +151,7 @@ export default function AuthorityDocumentCreate() {
               <Form.Item
                 label="Type"
                 name="type"
+                rules={[{ required: true }]}
               >
                 <Select>
                   <Select.Option value="Circular">Circular</Select.Option>
@@ -66,6 +164,9 @@ export default function AuthorityDocumentCreate() {
               <Form.Item
                 label="Identifier"
                 name="identifier"
+                rules={identifierRules}
+                validateTrigger={['onChange', 'onBlur']}
+                normalize={(value) => value?.trim()}
               >
                 <Input />
               </Form.Item>
@@ -74,6 +175,9 @@ export default function AuthorityDocumentCreate() {
               <Form.Item
                 label="Issuing Body"
                 name="issuing_body"
+                rules={issuingBodyRules}
+                validateTrigger={['onChange', 'onBlur']}
+                normalize={(value) => value?.trim()}
               >
                 <Input />
               </Form.Item>
@@ -82,24 +186,26 @@ export default function AuthorityDocumentCreate() {
               <Form.Item
                 label="Version"
                 name="version"
+                rules={versionRules}
+                validateTrigger={['onChange', 'onBlur']}
+                normalize={(value) => value?.trim()}
               >
                 <Input />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                label="Publication Date"
-                name="publication_date"
-              >
-                <DatePicker style={{ width: '100%' }} />
               </Form.Item>
             </Col>
             <Col span={24}>
               <Form.Item
                 label="Description"
                 name="description"
+                rules={descriptionRules}
+                validateTrigger={['onChange', 'onBlur']}
+                normalize={(value) => value?.trim()}
               >
-                <TextArea rows={4} />
+                <TextArea 
+                  rows={4}
+                  maxLength={2000}
+                  showCount
+                />
               </Form.Item>
             </Col>
           </Row>

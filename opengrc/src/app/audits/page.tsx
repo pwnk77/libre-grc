@@ -8,10 +8,84 @@ import {
   useSelect,
   CreateButton,
 } from "@refinedev/antd";
-import { BaseKey, BaseRecord, CrudFilters, useNavigation } from "@refinedev/core";
-import { Table, Checkbox, Button, Popover, Select, Input, Tag } from "antd";
+import { BaseKey, BaseRecord, CrudFilters, useNavigation, useList } from "@refinedev/core";
+import { Space, Table, Checkbox, Button, Popover, Select, Input, Tag, AutoComplete, Typography } from "antd";
 import { useState, useEffect } from "react";
-import { SettingOutlined } from "@ant-design/icons";
+import { SettingOutlined, SearchOutlined } from "@ant-design/icons";
+
+const { Text } = Typography;
+
+interface ISearchItem {
+  id: string;
+  audit_name: string;
+  scope?: string;
+  description?: string;
+  workflow_status: string;
+  planned_start_date?: string;
+  planned_end_date?: string;
+}
+
+interface IOptionGroup {
+  key: string;
+  value: string;
+  label: React.ReactNode;
+}
+
+interface IOptions {
+  label: React.ReactNode;
+  options: IOptionGroup[];
+}
+
+const renderTitle = (title: string) => (
+  <Text strong style={{ fontSize: "16px" }}>
+    {title}
+  </Text>
+);
+
+const renderItem = (item: ISearchItem): IOptionGroup => ({
+  key: item.id,
+  value: item.audit_name,
+  label: (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+        <Text strong>{item.audit_name}</Text>
+        <Tag color={getWorkflowStatusColor(item.workflow_status)}>{item.workflow_status}</Tag>
+      </div>
+      {item.scope && (
+        <Text type="secondary" style={{ fontSize: '12px' }}>
+          {item.scope.length > 100 
+            ? `${item.scope.slice(0, 100)}...` 
+            : item.scope}
+        </Text>
+      )}
+      <div style={{ marginTop: 4 }}>
+        <Space>
+          {item.planned_start_date && (
+            <Text type="secondary">Start: {item.planned_start_date}</Text>
+          )}
+          {item.planned_end_date && (
+            <Text type="secondary">End: {item.planned_end_date}</Text>
+          )}
+        </Space>
+      </div>
+    </div>
+  ),
+});
+
+const getWorkflowStatusColor = (status: string) => {
+  switch (status) {
+    case 'Planned':
+      return 'blue';
+    case 'In Progress':
+      return 'orange';
+    case 'Reporting':
+      return 'purple';
+    case 'Closed':
+      return 'green';
+    default:
+      return 'default';
+  }
+};
 
 export default function AuditsList() {
   const [selectedColumns, setSelectedColumns] = useState<string[]>([
@@ -22,7 +96,8 @@ export default function AuditsList() {
     "workflow_status",
     "created_at",
   ]);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [value, setValue] = useState<string>("");
+  const [options, setOptions] = useState<IOptions[]>([]);
 
   const { show } = useNavigation();
 
@@ -54,13 +129,13 @@ export default function AuditsList() {
         workflow_status: string;
       };
 
-      if (searchTerm) {
+      if (value) {
         filters.push({
           operator: "or",
           value: [
-            { field: "audit_name", operator: "contains", value: searchTerm },
-            { field: "scope", operator: "contains", value: searchTerm },
-            { field: "description", operator: "contains", value: searchTerm },
+            { field: "audit_name", operator: "contains", value },
+            { field: "scope", operator: "contains", value },
+            { field: "description", operator: "contains", value },
           ],
         });
       }
@@ -77,13 +152,44 @@ export default function AuditsList() {
     },
   });
 
+  const { refetch: refetchAudits } = useList<ISearchItem>({
+    resource: "audits",
+    filters: [
+      {
+        operator: "or",
+        value: [
+          { field: "audit_name", operator: "contains", value },
+          { field: "scope", operator: "contains", value },
+          { field: "description", operator: "contains", value }
+        ]
+      }
+    ],
+    queryOptions: {
+      enabled: false,
+      onSuccess: (data) => {
+        const auditOptionGroup = data.data.map(renderItem);
+        if (auditOptionGroup.length > 0) {
+          setOptions([
+            {
+              label: renderTitle("Audits"),
+              options: auditOptionGroup,
+            },
+          ]);
+        }
+      },
+    },
+  });
+
   useEffect(() => {
-    setSearchTerm("");
-  }, []);
+    setOptions([]);
+    if (value.length > 2) {
+      refetchAudits();
+    }
+  }, [value]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newSearchTerm = e.target.value;
-    setSearchTerm(newSearchTerm);
+    setValue(newSearchTerm);
     
     if (newSearchTerm === "") {
       setFilters([], "replace");
@@ -236,6 +342,33 @@ export default function AuditsList() {
     });
   };
 
+  const renderSearch = () => (
+    <div style={{ 
+      width: 500, 
+      marginBottom: 16,
+      marginLeft: 'auto'  // Push to right side
+    }}>
+      <AutoComplete<string, IOptions>
+        style={{ width: "100%" }}
+        options={options}
+        onSearch={(value: string) => setValue(value)}
+        onSelect={(value, option: any) => {
+          if (option.key) {
+            show("audits", option.key);
+          }
+        }}
+        notFoundContent="No results found"
+        dropdownMatchSelectWidth={true}
+      >
+        <Input
+          placeholder="Search audits by name, scope, or description..."
+          suffix={<SearchOutlined />}
+          size="large"
+        />
+      </AutoComplete>
+    </div>
+  );
+
   return (
     <List
       headerButtons={[
@@ -251,14 +384,7 @@ export default function AuditsList() {
         </Popover>,
       ]}
     >
-      <Input.Search
-        placeholder="Search audits..."
-        value={searchTerm}
-        onChange={handleSearchChange}
-        onSearch={handleSearch}
-        style={{ marginBottom: 16 }}
-        allowClear
-      />
+      {renderSearch()}
       <Table 
         {...tableProps} 
         rowKey="id"

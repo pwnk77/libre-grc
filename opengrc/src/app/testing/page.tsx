@@ -10,10 +10,71 @@ import {
   useSelect,
   CreateButton,
 } from "@refinedev/antd";
-import { BaseKey, BaseRecord, CrudFilters, useNavigation, useMany } from "@refinedev/core";
-import { Space, Table, Checkbox, Button, Popover, Select, Input, Tag } from "antd";
+import { BaseKey, BaseRecord, CrudFilters, useNavigation, useList, useMany } from "@refinedev/core";
+import { Space, Table, Checkbox, Button, Popover, Select, Input, Tag, AutoComplete, Typography } from "antd";
 import { useState, useEffect } from "react";
-import { SettingOutlined } from "@ant-design/icons";
+import { SettingOutlined, SearchOutlined } from "@ant-design/icons";
+
+const { Text } = Typography;
+
+interface ISearchItem {
+  id: string;
+  evidence_request: string;
+  test_date?: string;
+  tester?: string;
+  compliance_status: string;
+  workflow_status: string;
+  control_id?: string;
+  control?: {
+    control_id: string;
+  };
+}
+
+interface IOptionGroup {
+  key: string;
+  value: string;
+  label: React.ReactNode;
+}
+
+interface IOptions {
+  label: React.ReactNode;
+  options: IOptionGroup[];
+}
+
+const renderTitle = (title: string) => (
+  <Text strong style={{ fontSize: "16px" }}>
+    {title}
+  </Text>
+);
+
+const renderItem = (item: ISearchItem): IOptionGroup => ({
+  key: item.id,
+  value: item.evidence_request,
+  label: (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+        <Text strong>{item.evidence_request}</Text>
+        <Space>
+          <Tag color={getComplianceStatusColor(item.compliance_status)}>{item.compliance_status}</Tag>
+          <Tag color={getWorkflowStatusColor(item.workflow_status)}>{item.workflow_status}</Tag>
+        </Space>
+      </div>
+      <div style={{ marginTop: 4 }}>
+        <Space>
+          {item.control?.control_id && (
+            <Text type="secondary">Control: {item.control.control_id}</Text>
+          )}
+          {item.tester && (
+            <Text type="secondary">Tester: {item.tester}</Text>
+          )}
+          {item.test_date && (
+            <Text type="secondary">Date: {item.test_date}</Text>
+          )}
+        </Space>
+      </div>
+    </div>
+  ),
+});
 
 export default function TestingList() {
   const [selectedColumns, setSelectedColumns] = useState<string[]>([
@@ -25,7 +86,8 @@ export default function TestingList() {
     "tester",
     "control_id",
   ]);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [value, setValue] = useState<string>("");
+  const [options, setOptions] = useState<IOptions[]>([]);
 
   const { show } = useNavigation();
 
@@ -58,14 +120,13 @@ export default function TestingList() {
         workflow_status: string;
       };
 
-      if (searchTerm) {
+      if (value) {
         filters.push({
           operator: "or",
           value: [
-            { field: "evidence_request", operator: "contains", value: searchTerm },
-            { field: "tester", operator: "contains", value: searchTerm },
-            { field: "audit_strategy", operator: "contains", value: searchTerm },
-          ],
+            { field: "evidence_request", operator: "contains", value },
+            { field: "tester", operator: "contains", value }
+          ]
         });
       }
 
@@ -89,14 +150,57 @@ export default function TestingList() {
     },
   });
 
-  // Clear search on page reload
+  const { refetch: refetchTesting } = useList<ISearchItem>({
+    resource: "testing",
+    filters: [
+      {
+        operator: "or",
+        value: [
+          { field: "evidence_request", operator: "contains", value },
+          { field: "tester", operator: "contains", value }
+        ]
+      }
+    ],
+    meta: {
+      fields: [
+        "id",
+        "evidence_request",
+        "test_date",
+        "tester",
+        "compliance_status",
+        "workflow_status",
+        "control_id",
+        {
+          control: ["control_id"],
+        },
+      ],
+    },
+    queryOptions: {
+      enabled: false,
+      onSuccess: (data) => {
+        const testingOptionGroup = data.data.map(renderItem);
+        if (testingOptionGroup.length > 0) {
+          setOptions([
+            {
+              label: renderTitle("Testing"),
+              options: testingOptionGroup,
+            },
+          ]);
+        }
+      },
+    },
+  });
+
   useEffect(() => {
-    setSearchTerm("");
-  }, []);
+    setOptions([]);
+    if (value.length > 2) {
+      refetchTesting();
+    }
+  }, [value]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newSearchTerm = e.target.value;
-    setSearchTerm(newSearchTerm);
+    setValue(newSearchTerm);
     
     if (newSearchTerm === "") {
       // Reset the table and URL when search is cleared
@@ -253,6 +357,33 @@ export default function TestingList() {
     ));
   };
 
+  const renderSearch = () => (
+    <div style={{ 
+      width: 500, 
+      marginBottom: 16,
+      marginLeft: 'auto'  // Push to right side
+    }}>
+      <AutoComplete<string, IOptions>
+        style={{ width: "100%" }}
+        options={options}
+        onSearch={(value: string) => setValue(value)}
+        onSelect={(value, option: any) => {
+          if (option.key) {
+            show("testing", option.key);
+          }
+        }}
+        notFoundContent="No results found"
+        dropdownMatchSelectWidth={true}
+      >
+        <Input
+          placeholder="Search testing by evidence request or tester..."
+          suffix={<SearchOutlined />}
+          size="large"
+        />
+      </AutoComplete>
+    </div>
+  );
+
   return (
     <List
       headerButtons={[
@@ -268,14 +399,7 @@ export default function TestingList() {
         </Popover>,
       ]}
     >
-      <Input.Search
-        placeholder="Search testing..."
-        value={searchTerm}
-        onChange={handleSearchChange}
-        onSearch={handleSearch}
-        style={{ marginBottom: 16 }}
-        allowClear
-      />
+      {renderSearch()}
       <Table 
         {...tableProps} 
         rowKey="id"

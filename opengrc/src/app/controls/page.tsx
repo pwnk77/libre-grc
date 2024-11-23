@@ -10,10 +10,70 @@ import {
   useSelect,
   CreateButton,
 } from "@refinedev/antd";
-import { BaseKey, BaseRecord, CrudFilters, useNavigation } from "@refinedev/core";
-import { Space, Table, Checkbox, Button, Popover, Select, Input, Tag } from "antd";
+import { BaseKey, BaseRecord, CrudFilters, useNavigation, useList } from "@refinedev/core";
+import { Space, Table, Checkbox, Button, Popover, Select, Input, Tag, AutoComplete, Typography } from "antd";
 import { useState, useEffect } from "react";
-import { SettingOutlined } from "@ant-design/icons";
+import { SettingOutlined, SearchOutlined } from "@ant-design/icons";
+
+const { Text } = Typography;
+
+interface ISearchItem {
+  id: string;
+  control_id: string;
+  domain: string;
+  control_requirements?: string;
+  control_type?: string;
+  compliance_status: string;
+  workflow_status: string;
+}
+
+interface IOptionGroup {
+  key: string;
+  value: string;
+  label: React.ReactNode;
+}
+
+interface IOptions {
+  label: React.ReactNode;
+  options: IOptionGroup[];
+}
+
+const renderTitle = (title: string) => (
+  <Text strong style={{ fontSize: "16px" }}>
+    {title}
+  </Text>
+);
+
+const renderItem = (item: ISearchItem): IOptionGroup => ({
+  key: item.id,
+  value: item.control_id,
+  label: (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+        <Text strong>{item.control_id}</Text>
+        <Space>
+          <Tag color={getComplianceStatusColor(item.compliance_status)}>{item.compliance_status}</Tag>
+          <Tag color={getWorkflowStatusColor(item.workflow_status)}>{item.workflow_status}</Tag>
+        </Space>
+      </div>
+      <div>
+        <Text type="secondary">{item.domain}</Text>
+      </div>
+      {item.control_requirements && (
+        <Text type="secondary" style={{ fontSize: '12px' }}>
+          {item.control_requirements.length > 100 
+            ? `${item.control_requirements.slice(0, 100)}...` 
+            : item.control_requirements}
+        </Text>
+      )}
+      {item.control_type && (
+        <div style={{ marginTop: 4 }}>
+          <Tag color={getControlTypeColor(item.control_type)}>{item.control_type}</Tag>
+        </div>
+      )}
+    </div>
+  ),
+});
 
 export default function ControlsLibrary() {
   const [selectedColumns, setSelectedColumns] = useState<string[]>([
@@ -25,7 +85,8 @@ export default function ControlsLibrary() {
     "workflow_status",
     "created_at",
   ]);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [value, setValue] = useState<string>("");
+  const [options, setOptions] = useState<IOptions[]>([]);
 
   const { show } = useNavigation();
 
@@ -58,14 +119,14 @@ export default function ControlsLibrary() {
         workflow_status: string;
       };
 
-      if (searchTerm) {
+      if (value) {
         filters.push({
           operator: "or",
           value: [
-            { field: "control_id", operator: "contains", value: searchTerm },
-            { field: "domain", operator: "contains", value: searchTerm },
-            { field: "control_requirements", operator: "contains", value: searchTerm },
-            { field: "risk_statement", operator: "contains", value: searchTerm },
+            { field: "control_id", operator: "contains", value },
+            { field: "domain", operator: "contains", value },
+            { field: "control_requirements", operator: "contains", value },
+            { field: "risk_statement", operator: "contains", value },
             // Add more fields as needed
           ],
         });
@@ -91,24 +152,67 @@ export default function ControlsLibrary() {
     },
   });
 
-  // Clear search on page reload
+  const { refetch: refetchControls } = useList<ISearchItem>({
+    resource: "controls",
+    filters: [
+      {
+        operator: "or",
+        value: [
+          { field: "control_id", operator: "contains", value },
+          { field: "domain", operator: "contains", value },
+          { field: "control_requirements", operator: "contains", value }
+        ]
+      }
+    ],
+    queryOptions: {
+      enabled: false,
+      onSuccess: (data) => {
+        const controlOptionGroup = data.data.map(renderItem);
+        if (controlOptionGroup.length > 0) {
+          setOptions([
+            {
+              label: renderTitle("Controls"),
+              options: controlOptionGroup,
+            },
+          ]);
+        }
+      },
+    },
+  });
+
   useEffect(() => {
-    setSearchTerm("");
-  }, []);
-
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newSearchTerm = e.target.value;
-    setSearchTerm(newSearchTerm);
-    
-    if (newSearchTerm === "") {
-      // Reset the table and URL when search is cleared
-      setFilters([], "replace");
+    setOptions([]);
+    if (value.length > 2) {
+      refetchControls();
     }
-  };
+  }, [value]);
 
-  const handleSearch = () => {
-    searchFormProps?.onFinish?.({});
-  };
+  const renderSearch = () => (
+    <div style={{ 
+      width: 500, 
+      marginBottom: 16,
+      marginLeft: 'auto'  // Push to right side
+    }}>
+      <AutoComplete<string, IOptions>
+        style={{ width: "100%" }}
+        options={options}
+        onSearch={(value: string) => setValue(value)}
+        onSelect={(value, option: any) => {
+          if (option.key) {
+            show("controls", option.key);
+          }
+        }}
+        notFoundContent="No results found"
+        dropdownMatchSelectWidth={true}
+      >
+        <Input
+          placeholder="Search controls by ID, domain, or requirements..."
+          suffix={<SearchOutlined />}
+          size="large"
+        />
+      </AutoComplete>
+    </div>
+  );
 
   const { selectProps: complianceStatusSelectProps } = useSelect({
     resource: "controls",
@@ -339,14 +443,7 @@ export default function ControlsLibrary() {
         </Popover>,
       ]}
     >
-      <Input.Search
-        placeholder="Search controls..."
-        value={searchTerm}
-        onChange={handleSearchChange}
-        onSearch={handleSearch}
-        style={{ marginBottom: 16 }}
-        allowClear
-      />
+      {renderSearch()}
       <Table 
         {...tableProps} 
         rowKey="id"
@@ -382,6 +479,19 @@ function getWorkflowStatusColor(status: string): string {
       return 'green';
     case 'Retired':
       return 'gray';
+    default:
+      return 'default';
+  }
+}
+
+function getControlTypeColor(type: string): string {
+  switch (type) {
+    case 'Preventive':
+      return 'blue';
+    case 'Detective':
+      return 'green';
+    case 'Corrective':
+      return 'orange';
     default:
       return 'default';
   }

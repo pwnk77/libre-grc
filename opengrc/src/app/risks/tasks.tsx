@@ -86,25 +86,47 @@ export const TasksTab: React.FC<{ riskId: string }> = ({ riskId }) => {
   };
 
   const onFinish = async (values: any) => {
-    createTask({
-      resource: "tasks",
-      values: {
-        ...values,
-        related_entity_id: riskId,
-        entity_type: "risks",
-        task_type: "Risk",
-        due_date: values.due_date ? values.due_date.format('YYYY-MM-DD') : null,
-      },
-    }, {
-      onSuccess: () => {
-        message.success("Task created successfully");
-        formProps.form?.resetFields();
-      },
-      onError: (error) => {
-        console.error("Error creating task:", error);
-        message.error("Failed to create task");
-      },
-    });
+    // Validate task data
+    try {
+      // Add custom validation
+      if (values.due_date && values.due_date.isBefore(dayjs(), 'day')) {
+        message.error('Due date cannot be in the past');
+        return;
+      }
+
+      createTask({
+        resource: "tasks",
+        values: {
+          ...values,
+          related_entity_id: riskId,
+          entity_type: "risks",
+          task_type: "Risk",
+          due_date: values.due_date ? values.due_date.format('YYYY-MM-DD') : null,
+        },
+      }, {
+        onSuccess: () => {
+          message.success("Task created successfully");
+          formProps.form?.resetFields();
+        },
+        onError: (error) => {
+          // Handle server validation errors
+          if ((error?.response?.data as any)?.errors) {
+            const errors = (error?.response?.data as any)?.errors;
+            Object.keys(errors).forEach((key) => {
+              form.setFields([
+                {
+                  name: key,
+                  errors: [errors[key]],
+                },
+              ]);
+            });
+          }
+          message.error("Failed to create task");
+        },
+      });
+    } catch (error) {
+      console.error("Validation failed:", error);
+    }
   };
 
   const EditableCell = ({

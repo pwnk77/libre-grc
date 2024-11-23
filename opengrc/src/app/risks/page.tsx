@@ -10,10 +10,67 @@ import {
   useSelect,
   CreateButton,
 } from "@refinedev/antd";
-import { BaseKey, BaseRecord, CrudFilters, useNavigation } from "@refinedev/core";
-import { Space, Table, Checkbox, Button, Popover, Select, Input, Tag } from "antd";
+import { BaseKey, BaseRecord, CrudFilters, useNavigation, useList } from "@refinedev/core";
+import { Space, Table, Checkbox, Button, Popover, Select, Input, Tag, AutoComplete, Typography } from "antd";
 import { useState, useEffect } from "react";
-import { SettingOutlined } from "@ant-design/icons";
+import { SettingOutlined, SearchOutlined } from "@ant-design/icons";
+
+const { Text } = Typography;
+
+interface ISearchItem {
+  id: string;
+  risk_id: string;
+  risk_summary: string;
+  description?: string;
+  impact: string;
+  likelihood: string;
+  inherent_risk_level: string;
+  workflow_status: string;
+}
+
+interface IOptionGroup {
+  key: string;
+  value: string;
+  label: React.ReactNode;
+}
+
+interface IOptions {
+  label: React.ReactNode;
+  options: IOptionGroup[];
+}
+
+const renderTitle = (title: string) => (
+  <Text strong style={{ fontSize: "16px" }}>
+    {title}
+  </Text>
+);
+
+const renderItem = (item: ISearchItem): IOptionGroup => ({
+  key: item.id,
+  value: `${item.risk_id}: ${item.risk_summary}`,
+  label: (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+        <Text strong>{item.risk_id}: {item.risk_summary}</Text>
+        <Space>
+          <Tag color={getImpactColor(item.impact)}>{item.impact}</Tag>
+          <Tag color={getWorkflowStatusColor(item.workflow_status)}>{item.workflow_status}</Tag>
+        </Space>
+      </div>
+      {item.description && (
+        <Text type="secondary" style={{ fontSize: '12px' }}>
+          {item.description.length > 100 
+            ? `${item.description.slice(0, 100)}...` 
+            : item.description}
+        </Text>
+      )}
+      <div style={{ marginTop: 4 }}>
+        <Tag color={getLikelihoodColor(item.likelihood)}>Likelihood: {item.likelihood}</Tag>
+        <Tag color={getRiskLevelColor(item.inherent_risk_level)}>Risk Level: {item.inherent_risk_level}</Tag>
+      </div>
+    </div>
+  ),
+});
 
 export default function RisksList() {
   const [selectedColumns, setSelectedColumns] = useState<string[]>([
@@ -27,7 +84,8 @@ export default function RisksList() {
     "workflow_status",
     "created_at",
   ]);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [value, setValue] = useState<string>("");
+  const [options, setOptions] = useState<IOptions[]>([]);
 
   const { show } = useNavigation();
 
@@ -60,15 +118,14 @@ export default function RisksList() {
         inherent_risk_level: string;
       };
 
-      if (searchTerm) {
+      if (value) {
         filters.push({
           operator: "or",
           value: [
-            { field: "risk_id", operator: "contains", value: searchTerm },
-            { field: "risk_summary", operator: "contains", value: searchTerm },
-            { field: "description", operator: "contains", value: searchTerm },
-            // Add more fields as needed
-          ],
+            { field: "risk_id", operator: "contains", value },
+            { field: "risk_summary", operator: "contains", value },
+            { field: "description", operator: "contains", value }
+          ]
         });
       }
 
@@ -92,24 +149,67 @@ export default function RisksList() {
     },
   });
 
-  // Clear search on page reload
+  const { refetch: refetchRisks } = useList<ISearchItem>({
+    resource: "risks",
+    filters: [
+      {
+        operator: "or",
+        value: [
+          { field: "risk_id", operator: "contains", value },
+          { field: "risk_summary", operator: "contains", value },
+          { field: "description", operator: "contains", value }
+        ]
+      }
+    ],
+    queryOptions: {
+      enabled: false,
+      onSuccess: (data) => {
+        const riskOptionGroup = data.data.map(renderItem);
+        if (riskOptionGroup.length > 0) {
+          setOptions([
+            {
+              label: renderTitle("Risks"),
+              options: riskOptionGroup,
+            },
+          ]);
+        }
+      },
+    },
+  });
+
   useEffect(() => {
-    setSearchTerm("");
-  }, []);
-
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newSearchTerm = e.target.value;
-    setSearchTerm(newSearchTerm);
-    
-    if (newSearchTerm === "") {
-      // Reset the table and URL when search is cleared
-      setFilters([], "replace");
+    setOptions([]);
+    if (value.length > 2) {
+      refetchRisks();
     }
-  };
+  }, [value]);
 
-  const handleSearch = () => {
-    searchFormProps?.onFinish?.({});
-  };
+  const renderSearch = () => (
+    <div style={{ 
+      width: 500, 
+      marginBottom: 16,
+      marginLeft: 'auto'  // Push to right side
+    }}>
+      <AutoComplete<string, IOptions>
+        style={{ width: "100%" }}
+        options={options}
+        onSearch={(value: string) => setValue(value)}
+        onSelect={(value, option: any) => {
+          if (option.key) {
+            show("risks", option.key);
+          }
+        }}
+        notFoundContent="No results found"
+        dropdownMatchSelectWidth={true}
+      >
+        <Input
+          placeholder="Search risks by ID, summary, or description..."
+          suffix={<SearchOutlined />}
+          size="large"
+        />
+      </AutoComplete>
+    </div>
+  );
 
   const { selectProps: workflowStatusSelectProps } = useSelect({
     resource: "risks",
@@ -247,14 +347,7 @@ export default function RisksList() {
         </Popover>,
       ]}
     >
-      <Input.Search
-        placeholder="Search risks..."
-        value={searchTerm}
-        onChange={handleSearchChange}
-        onSearch={handleSearch}
-        style={{ marginBottom: 16 }}
-        allowClear
-      />
+      {renderSearch()}
       <Table 
         {...tableProps} 
         rowKey="id"

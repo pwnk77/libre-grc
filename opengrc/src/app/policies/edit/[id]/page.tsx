@@ -1,64 +1,70 @@
 "use client";
 
 import { Edit, useForm } from "@refinedev/antd";
-import { useCreate, useGetIdentity } from "@refinedev/core";
+import { HttpError } from "@refinedev/core";
+import { Form, Input, DatePicker, Select, Card, Row, Col, message } from "antd";
 import { useParams } from "next/navigation";
-import { Form, Input, DatePicker, Select, Card, Row, Col } from "antd";
+import dayjs from 'dayjs';
 import { Activity } from "../../activity";
 import { useAttachments } from "../../attachments";
-import dayjs from 'dayjs';
 
 const { TextArea } = Input;
 
+interface IError {
+  response: {
+    data: {
+      errors: {
+        [key: string]: string[];
+      };
+    };
+  };
+}
+
+interface IPolicyData {
+  policy_name?: string;
+  purpose?: string;
+  prepared_by?: string;
+  reviewed_by?: string;
+  policy_link?: string;
+  workflow_status?: string;
+  prepared_date?: string;
+  review_date?: string;
+  next_revision_due_date?: string;
+}
+
 export default function PolicyEdit() {
   const params = useParams();
-  const { formProps, saveButtonProps, queryResult } = useForm({
+  const { formProps, saveButtonProps, queryResult } = useForm<IPolicyData, HttpError>({
     resource: "policies",
     id: params.id as string,
+    meta: {
+      onError: (error: IError) => {
+        if (error?.response?.data?.errors) {
+          const errors = error.response.data.errors;
+          
+          Object.keys(errors).forEach((key) => {
+            formProps.form?.setFields([
+              {
+                name: key,
+                errors: Array.isArray(errors[key]) ? errors[key] : [errors[key]],
+              },
+            ]);
+          });
+          message.error('Validation failed. Please check the form.');
+        }
+      },
+    },
   });
-
-  const { mutate: createChangeHistory } = useCreate();
-  const { data: identity } = useGetIdentity<{ id: string }>();
 
   const { data, isLoading } = queryResult || {};
   const record = data?.data;
 
   const { renderAttachments } = useAttachments(params.id as string);
 
-  const handleUpdate = async (values: any) => {
-    try {
-      const response = await formProps.onFinish?.(values);
-      if (response && 'data' in response) {
-        const changedFields = Object.keys(values).reduce((acc: Record<string, any>, key) => {
-          if (JSON.stringify(values[key]) !== JSON.stringify(record?.[key])) {
-            acc[key] = values[key];
-          }
-          return acc;
-        }, {});
-
-        if (Object.keys(changedFields).length > 0) {
-          createChangeHistory({
-            resource: "change_history",
-            values: {
-              table_name: "policies",
-              record_id: params.id,
-              action: "Updated",
-              change_details: JSON.stringify(changedFields),
-              changed_by: identity?.id,
-            },
-          });
-        }
-      }
-    } catch (error) {
-      console.error("Error updating policy:", error);
-    }
-  };
-
   return (
     <Edit saveButtonProps={saveButtonProps}>
       <Form 
         {...formProps} 
-        onFinish={handleUpdate}
         layout="vertical"
         initialValues={{
           ...record,
@@ -75,7 +81,24 @@ export default function PolicyEdit() {
                   <Form.Item
                     label="Policy Name"
                     name="policy_name"
-                    rules={[{ required: true }]}
+                    rules={[
+                      { required: true, message: 'Policy name is required' },
+                      { min: 3, message: 'Policy name must be at least 3 characters' },
+                      { max: 200, message: 'Policy name cannot exceed 200 characters' },
+                      {
+                        validator: async (_, value) => {
+                          if (value) {
+                            if (/<[^>]*>/.test(value)) {
+                              throw new Error('HTML tags are not allowed');
+                            }
+                            if (/(\b(select|insert|update|delete|drop|union|exec)\b)|(['";])/i.test(value)) {
+                              throw new Error('Invalid characters or SQL keywords detected');
+                            }
+                          }
+                        }
+                      }
+                    ]}
+                    validateTrigger={['onChange', 'onBlur']}
                   >
                     <Input />
                   </Form.Item>
@@ -84,14 +107,49 @@ export default function PolicyEdit() {
                   <Form.Item
                     label="Purpose"
                     name="purpose"
+                    rules={[
+                      { max: 2000, message: 'Purpose cannot exceed 2000 characters' },
+                      {
+                        validator: async (_, value) => {
+                          if (value) {
+                            if (/<[^>]*>/.test(value)) {
+                              throw new Error('HTML tags are not allowed');
+                            }
+                            if (/(\b(select|insert|update|delete|drop|union|exec)\b)|(['";])/i.test(value)) {
+                              throw new Error('Invalid characters or SQL keywords detected');
+                            }
+                          }
+                        }
+                      }
+                    ]}
+                    validateTrigger={['onChange', 'onBlur']}
                   >
-                    <TextArea rows={4} />
+                    <TextArea rows={4} maxLength={2000} showCount />
                   </Form.Item>
                 </Col>
                 <Col span={12}>
                   <Form.Item
                     label="Prepared By"
                     name="prepared_by"
+                    rules={[
+                      { max: 100, message: 'Name cannot exceed 100 characters' },
+                      {
+                        validator: async (_, value) => {
+                          if (value) {
+                            if (/<[^>]*>/.test(value)) {
+                              throw new Error('HTML tags are not allowed');
+                            }
+                            if (/(\b(select|insert|update|delete|drop|union|exec)\b)|(['";])/i.test(value)) {
+                              throw new Error('Invalid characters or SQL keywords detected');
+                            }
+                            if (!/^[A-Za-z\s\-'.]+$/.test(value)) {
+                              throw new Error('Only letters, spaces, hyphens, apostrophes and periods allowed');
+                            }
+                          }
+                        }
+                      }
+                    ]}
+                    validateTrigger={['onChange', 'onBlur']}
                   >
                     <Input />
                   </Form.Item>
@@ -100,6 +158,25 @@ export default function PolicyEdit() {
                   <Form.Item
                     label="Reviewed By"
                     name="reviewed_by"
+                    rules={[
+                      { max: 100, message: 'Name cannot exceed 100 characters' },
+                      {
+                        validator: async (_, value) => {
+                          if (value) {
+                            if (/<[^>]*>/.test(value)) {
+                              throw new Error('HTML tags are not allowed');
+                            }
+                            if (/(\b(select|insert|update|delete|drop|union|exec)\b)|(['";])/i.test(value)) {
+                              throw new Error('Invalid characters or SQL keywords detected');
+                            }
+                            if (!/^[A-Za-z\s\-'.]+$/.test(value)) {
+                              throw new Error('Only letters, spaces, hyphens, apostrophes and periods allowed');
+                            }
+                          }
+                        }
+                      }
+                    ]}
+                    validateTrigger={['onChange', 'onBlur']}
                   >
                     <Input />
                   </Form.Item>
@@ -132,8 +209,29 @@ export default function PolicyEdit() {
                   <Form.Item
                     label="Policy Link"
                     name="policy_link"
+                    rules={[
+                      { max: 2000, message: 'URL cannot exceed 2000 characters' },
+                      {
+                        validator: async (_, value) => {
+                          if (value) {
+                            if (/<[^>]*>/.test(value)) {
+                              throw new Error('HTML tags are not allowed');
+                            }
+                            if (/(\b(select|insert|update|delete|drop|union|exec)\b)|(['";])/i.test(value)) {
+                              throw new Error('Invalid characters or SQL keywords detected');
+                            }
+                            try {
+                              new URL(value);
+                            } catch {
+                              throw new Error('Please enter a valid URL (e.g., https://example.com)');
+                            }
+                          }
+                        }
+                      }
+                    ]}
+                    validateTrigger={['onChange', 'onBlur']}
                   >
-                    <Input />
+                    <Input placeholder="https://example.com/policy" />
                   </Form.Item>
                 </Col>
                 <Col span={12}>

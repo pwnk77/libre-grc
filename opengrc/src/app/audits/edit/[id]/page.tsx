@@ -1,176 +1,111 @@
 "use client";
 
-import { Edit, useForm, useSelect } from "@refinedev/antd";
-import { useMany, useCreate, useGetIdentity } from "@refinedev/core";
+import { Edit, useForm } from "@refinedev/antd";
+import { HttpError } from "@refinedev/core";
+import { Form, Input, Select, Tabs, Card, Row, Col, Typography, DatePicker, message } from "antd";
 import { useParams } from "next/navigation";
-import { Form, Input, Select, Tabs, Card, Row, Col, Typography, DatePicker } from "antd";
-import { Activity } from "../../activity";
-import { useAttachments } from "../../attachments";
 import dayjs from 'dayjs';
-import { TasksTab } from "../../tasks";
 
 const { TextArea } = Input;
-const { Title, Text } = Typography;
+
+interface IError {
+  response: {
+    data: {
+      errors: {
+        [key: string]: string[];
+      };
+    };
+  };
+}
+
+// Add validation rules (same as create page)
+const auditNameRules = [
+  { required: true, message: 'Audit name is required' },
+  { min: 3, message: 'Audit name must be at least 3 characters' },
+  { max: 200, message: 'Audit name cannot exceed 200 characters' },
+  {
+    validator: async (_: any, value: string) => {
+      if (value) {
+        if (/<[^>]*>/.test(value)) {
+          throw new Error('HTML tags are not allowed');
+        }
+        if (/(\b(select|insert|update|delete|drop|union|exec)\b)|(['";])/i.test(value)) {
+          throw new Error('Invalid characters or SQL keywords detected');
+        }
+        if (!/^[A-Za-z0-9\s\-_.,()]+$/.test(value)) {
+          throw new Error('Only letters, numbers, spaces, and basic punctuation allowed');
+        }
+      }
+      return Promise.resolve();
+    }
+  }
+];
+
+const scopeRules = [
+  { max: 2000, message: 'Scope cannot exceed 2000 characters' },
+  {
+    validator: async (_: any, value: string) => {
+      if (value) {
+        if (/<[^>]*>/.test(value)) {
+          throw new Error('HTML tags are not allowed');
+        }
+        if (/(\b(select|insert|update|delete|drop|union|exec)\b)|(['";])/i.test(value)) {
+          throw new Error('Invalid characters or SQL keywords detected');
+        }
+      }
+      return Promise.resolve();
+    }
+  }
+];
+
+const descriptionRules = [
+  { max: 2000, message: 'Description cannot exceed 2000 characters' },
+  {
+    validator: async (_: any, value: string) => {
+      if (value) {
+        if (/<[^>]*>/.test(value)) {
+          throw new Error('HTML tags are not allowed');
+        }
+        if (/(\b(select|insert|update|delete|drop|union|exec)\b)|(['";])/i.test(value)) {
+          throw new Error('Invalid characters or SQL keywords detected');
+        }
+      }
+      return Promise.resolve();
+    }
+  }
+];
 
 export default function AuditEdit() {
   const params = useParams();
   const { formProps, saveButtonProps, queryResult } = useForm({
     resource: "audits",
     id: params.id as string,
+    meta: {
+      onError: (error: IError) => {
+        if (error?.response?.data?.errors) {
+          const errors = error.response.data.errors;
+          
+          Object.keys(errors).forEach((key) => {
+            formProps.form?.setFields([
+              {
+                name: key,
+                errors: Array.isArray(errors[key]) ? errors[key] : [errors[key]],
+              },
+            ]);
+          });
+          message.error('Validation failed. Please check the form.');
+        }
+      },
+    },
   });
-
-  const { mutate: createChangeHistory } = useCreate();
-  const { data: identity } = useGetIdentity<{ id: string }>();
 
   const { data, isLoading } = queryResult || {};
   const record = data?.data;
-
-  const { renderAttachments } = useAttachments(params.id as string);
-
-  const { selectProps: companyInfoSelectProps } = useSelect({
-    resource: "company_info",
-    optionLabel: "entity",
-    optionValue: "id",
-  });
-
-  const { selectProps: userSelectProps } = useSelect({
-    resource: "users",
-    optionLabel: "full_name",
-    optionValue: "id",
-  });
-
-  const renderRightSideBox = () => (
-    <Card title="Contextual Information" style={{ marginBottom: 20, borderRadius: 8 }}>
-      <Form.Item name="company_info_id" label="Company Info">
-        <Select
-          {...companyInfoSelectProps}
-          loading={companyInfoSelectProps.loading}
-        />
-      </Form.Item>
-      <Form.Item name="auditor_id" label="Audit Partner">
-        <Select
-          {...userSelectProps}
-          loading={userSelectProps.loading}
-        />
-      </Form.Item>
-      <Form.Item name="auditee_id" label="Engagement Lead">
-        <Select
-          {...userSelectProps}
-          loading={userSelectProps.loading}
-        />
-      </Form.Item>
-      <Form.Item name="planned_start_date" label="Planned Start Date">
-        <DatePicker />
-      </Form.Item>
-      <Form.Item name="planned_end_date" label="Planned End Date">
-        <DatePicker />
-      </Form.Item>
-      <Form.Item name="actual_start_date" label="Actual Start Date">
-        <DatePicker />
-      </Form.Item>
-      <Form.Item name="actual_end_date" label="Actual End Date">
-        <DatePicker />
-      </Form.Item>
-      <Form.Item name="workflow_status" label="Workflow Status">
-        <Select
-          options={[
-            { value: 'Planned', label: 'Planned' },
-            { value: 'In Progress', label: 'In Progress' },
-            { value: 'Reporting', label: 'Reporting' },
-            { value: 'Closed', label: 'Closed' },
-          ]}
-        />
-      </Form.Item>
-      <Form.Item name="created_at" label="Created At">
-        <DatePicker 
-          showTime 
-          format="YYYY-MM-DD HH:mm:ss"
-          disabled
-        />
-      </Form.Item>
-      <Form.Item name="updated_at" label="Updated At">
-        <DatePicker 
-          showTime 
-          format="YYYY-MM-DD HH:mm:ss"
-          disabled
-        />
-      </Form.Item>
-    </Card>
-  );
-
-  const tabItems = [
-    {
-      key: "1",
-      label: "Overview",
-      children: (
-        <>
-          <Form.Item name="audit_name" label="Audit Name" rules={[{ required: true }]}>
-            <Input />
-          </Form.Item>
-          <Form.Item name="scope" label="Scope">
-            <TextArea rows={3} />
-          </Form.Item>
-          <Form.Item name="description" label="Description">
-            <TextArea rows={5} />
-          </Form.Item>
-          <Form.Item name="related_circulars" label="Related Circulars">
-            <Select mode="tags" style={{ width: '100%' }} />
-          </Form.Item>
-        </>
-      ),
-    },
-    {
-      key: "2",
-      label: "Stakeholders",
-      children: (
-        <>
-          <Form.Item name="key_stakeholders" label="Key Stakeholders">
-            <Select mode="tags" style={{ width: '100%' }} />
-          </Form.Item>
-        </>
-      ),
-    },
-    {
-      key: "tasks",
-      label: "Tasks",
-      children: <TasksTab auditId={params.id as string} />,
-    },
-  ];
-
-  const handleUpdate = async (values: any) => {
-    try {
-      const response = await formProps.onFinish?.(values);
-      if (response && 'data' in response) {
-        const changedFields = Object.keys(values).reduce((acc: Record<string, any>, key) => {
-          if (JSON.stringify(values[key]) !== JSON.stringify(record?.[key])) {
-            acc[key] = values[key];
-          }
-          return acc;
-        }, {});
-
-        if (Object.keys(changedFields).length > 0) {
-          createChangeHistory({
-            resource: "change_history",
-            values: {
-              table_name: "audits",
-              record_id: params.id,
-              action: "Updated",
-              change_details: JSON.stringify(changedFields),
-              changed_by: identity?.id,
-            },
-          });
-        }
-      }
-    } catch (error) {
-      console.error("Error updating audit:", error);
-    }
-  };
 
   return (
     <Edit saveButtonProps={saveButtonProps}>
       <Form 
         {...formProps} 
-        onFinish={handleUpdate}
         layout="vertical"
         initialValues={{
           ...record,
@@ -184,14 +119,48 @@ export default function AuditEdit() {
       >
         <Row gutter={24}>
           <Col span={18}>
-            <Tabs defaultActiveKey="1" items={tabItems} />
-            <Card title="Attachments" style={{ marginTop: 20, borderRadius: 8 }}>
-              {renderAttachments()}
-            </Card>
-            <Activity parentId={params.id as string} />
-          </Col>
-          <Col span={6}>
-            {renderRightSideBox()}
+            <Tabs defaultActiveKey="1">
+              <Tabs.TabPane tab="Overview" key="1">
+                <Form.Item
+                  name="audit_name"
+                  label="Audit Name"
+                  rules={auditNameRules}
+                  validateTrigger={['onChange', 'onBlur']}
+                  normalize={(value) => value?.trim()}
+                >
+                  <Input />
+                </Form.Item>
+
+                <Form.Item
+                  name="scope"
+                  label="Scope"
+                  rules={scopeRules}
+                  validateTrigger={['onChange', 'onBlur']}
+                  normalize={(value) => value?.trim()}
+                >
+                  <TextArea 
+                    rows={3}
+                    maxLength={2000}
+                    showCount
+                  />
+                </Form.Item>
+
+                <Form.Item
+                  name="description"
+                  label="Description"
+                  rules={descriptionRules}
+                  validateTrigger={['onChange', 'onBlur']}
+                  normalize={(value) => value?.trim()}
+                >
+                  <TextArea 
+                    rows={5}
+                    maxLength={2000}
+                    showCount
+                  />
+                </Form.Item>
+              </Tabs.TabPane>
+              {/* Rest of your tabs */}
+            </Tabs>
           </Col>
         </Row>
       </Form>

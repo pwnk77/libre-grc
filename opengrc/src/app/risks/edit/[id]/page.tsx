@@ -1,9 +1,9 @@
 "use client";
 
 import { Edit, useForm, useSelect } from "@refinedev/antd";
-import { useMany, useCreate, useGetIdentity } from "@refinedev/core";
+import { useMany, useCreate, useGetIdentity, HttpError } from "@refinedev/core";
 import { useParams } from "next/navigation";
-import { Form, Input, Select, DatePicker, Tabs, Card, Row, Col, Typography, Divider } from "antd";
+import { Form, Input, Select, DatePicker, Tabs, Card, Row, Col, Typography, Divider, message } from "antd";
 import { Activity } from "../../activity";
 import { useAttachments } from "../../attachments";
 import dayjs from 'dayjs';
@@ -15,11 +15,102 @@ const { TextArea } = Input;
 const { TabPane } = Tabs;
 const { Title } = Typography;
 
+// Add interface for form error type
+interface IError {
+  response: {
+    data: {
+      errors: {
+        [key: string]: string[];
+      };
+    };
+  };
+}
+
+// Add sanitization helper
+const sanitizeInput = (value: string): string => {
+  // Remove HTML tags
+  const withoutHtml = value.replace(/<[^>]*>/g, '');
+  
+  // Remove special characters except basic punctuation
+  const sanitized = withoutHtml.replace(/[^\w\s.,!?-]/g, '');
+  
+  return sanitized.trim();
+};
+
+// Add validation rules
+const riskSummaryRules = [
+  { required: true, message: 'Risk summary is required' },
+  { min: 10, message: 'Risk summary must be at least 10 characters' },
+  { max: 500, message: 'Risk summary cannot exceed 500 characters' },
+  {
+    validator: async (_: any, value: string) => {
+      if (value) {
+        // Check for potential script injection
+        if (/<[^>]*>/.test(value)) {
+          throw new Error('HTML tags are not allowed');
+        }
+        // Check for SQL injection patterns
+        if (/(\b(select|insert|update|delete|drop|union|exec)\b)|(['";])/i.test(value)) {
+          throw new Error('Invalid characters or SQL keywords detected');
+        }
+        // Check for excessive special characters
+        if (/[^\w\s.,!?-]/.test(value)) {
+          throw new Error('Contains invalid special characters');
+        }
+      }
+      return Promise.resolve();
+    }
+  }
+];
+
+// Add validation rules for description
+const descriptionRules = [
+  { max: 2000, message: 'Description cannot exceed 2000 characters' },
+  {
+    validator: async (_: any, value: string) => {
+      if (value) {
+        // Check for potential script injection
+        if (/<[^>]*>/.test(value)) {
+          throw new Error('HTML tags are not allowed');
+        }
+        // Check for SQL injection patterns
+        if (/(\b(select|insert|update|delete|drop|union|exec)\b)|(['";])/i.test(value)) {
+          throw new Error('Invalid characters or SQL keywords detected');
+        }
+        // Check for excessive special characters
+        if (/[^\w\s.,!?-]/.test(value)) {
+          throw new Error('Contains invalid special characters');
+        }
+      }
+      return Promise.resolve();
+    }
+  }
+];
+
 export default function RiskEdit() {
   const params = useParams();
   const { formProps, saveButtonProps, queryResult } = useForm({
     resource: "risks",
     id: params.id as string,
+    meta: {
+      onError: (error: IError) => {
+        // Handle server-side validation errors
+        if (error?.response?.data?.errors) {
+          const errors = error.response.data.errors;
+          
+          // Set form errors from server response
+          Object.keys(errors).forEach((key) => {
+            formProps.form?.setFields([
+              {
+                name: key,
+                errors: Array.isArray(errors[key]) ? errors[key] : [errors[key]],
+              },
+            ]);
+          });
+          message.error('Validation failed. Please check the form.');
+        }
+      },
+    },
   });
 
   const { mutate: createChangeHistory } = useCreate();
@@ -45,11 +136,18 @@ export default function RiskEdit() {
 
   const handleUpdate = async (values: any) => {
     try {
-      const response = await formProps.onFinish?.(values);
+      // Sanitize both fields before submission
+      const sanitizedValues = {
+        ...values,
+        risk_summary: sanitizeInput(values.risk_summary),
+        description: sanitizeInput(values.description),
+      };
+
+      const response = await formProps.onFinish?.(sanitizedValues);
       if (response && 'data' in response) {
-        const changedFields = Object.keys(values).reduce((acc: Record<string, any>, key) => {
-          if (JSON.stringify(values[key]) !== JSON.stringify(record?.[key])) {
-            acc[key] = values[key];
+        const changedFields = Object.keys(sanitizedValues).reduce((acc: Record<string, any>, key) => {
+          if (JSON.stringify(sanitizedValues[key]) !== JSON.stringify(record?.[key])) {
+            acc[key] = sanitizedValues[key];
           }
           return acc;
         }, {});
@@ -65,10 +163,12 @@ export default function RiskEdit() {
               changed_by: identity?.id,
             },
           });
+          message.success('Risk updated successfully');
         }
       }
     } catch (error) {
       console.error("Error updating risk:", error);
+      message.error('Failed to update risk');
     }
   };
 
@@ -93,7 +193,11 @@ export default function RiskEdit() {
                       <Form.Item
                         name="risk_id"
                         label="Risk ID"
-                        rules={[{ required: true }]}
+                        rules={[
+                          { required: true },
+                          { pattern: /^[A-Za-z0-9-_]+$/, message: "Risk ID can only contain letters, numbers, hyphens and underscores" }
+                        ]}
+                        validateTrigger={["onChange", "onBlur"]}
                       >
                         <Input />
                       </Form.Item>
@@ -102,17 +206,54 @@ export default function RiskEdit() {
                       <Form.Item
                         name="risk_summary"
                         label="Risk Summary"
-                        rules={[{ required: true }]}
+                        rules={riskSummaryRules}
+                        validateTrigger={['onChange', 'onBlur']}
+                        normalize={(value) => value?.trim()}
                       >
-                        <Input />
+                        <Input.TextArea
+                          rows={2}
+                          maxLength={500}
+                          showCount
+                          onPaste={(e) => {
+                            // Sanitize pasted content
+                            const pastedText = e.clipboardData.getData('text');
+                            e.preventDefault();
+                            const sanitized = sanitizeInput(pastedText);
+                            const target = e.target as HTMLTextAreaElement;
+                            const start = target.selectionStart;
+                            const end = target.selectionEnd;
+                            const currentValue = target.value;
+                            const newValue = currentValue.substring(0, start) + sanitized + currentValue.substring(end);
+                            formProps.form?.setFieldValue('risk_summary', newValue);
+                          }}
+                        />
                       </Form.Item>
                     </Col>
                     <Col span={24}>
                       <Form.Item
                         name="description"
                         label="Description"
+                        rules={descriptionRules}
+                        validateTrigger={['onChange', 'onBlur']}
+                        normalize={(value) => value?.trim()}
                       >
-                        <TextArea rows={4} />
+                        <Input.TextArea
+                          rows={4}
+                          maxLength={2000}
+                          showCount
+                          onPaste={(e) => {
+                            // Sanitize pasted content
+                            const pastedText = e.clipboardData.getData('text');
+                            e.preventDefault();
+                            const sanitized = sanitizeInput(pastedText);
+                            const target = e.target as HTMLTextAreaElement;
+                            const start = target.selectionStart;
+                            const end = target.selectionEnd;
+                            const currentValue = target.value;
+                            const newValue = currentValue.substring(0, start) + sanitized + currentValue.substring(end);
+                            formProps.form?.setFieldValue('description', newValue);
+                          }}
+                        />
                       </Form.Item>
                     </Col>
                   </Row>

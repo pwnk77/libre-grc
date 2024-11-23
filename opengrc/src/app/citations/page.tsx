@@ -10,10 +10,63 @@ import {
   useSelect,
   CreateButton,
 } from "@refinedev/antd";
-import { BaseKey, BaseRecord, CrudFilters, useNavigation, useMany } from "@refinedev/core";
-import { Space, Table, Checkbox, Button, Popover, Select, Input } from "antd";
+import { BaseKey, BaseRecord, CrudFilters, useNavigation, useList, useMany } from "@refinedev/core";
+import { Space, Table, Checkbox, Button, Popover, Select, Input, Tag, AutoComplete, Typography } from "antd";
 import { useState, useEffect } from "react";
-import { SettingOutlined } from "@ant-design/icons";
+import { SettingOutlined, SearchOutlined } from "@ant-design/icons";
+
+const { Text } = Typography;
+
+// Add interfaces for type safety
+interface ISearchItem {
+  id: string;
+  citation_text: string;
+  reference_identifier?: string;
+  authority_document_id?: string;
+  authority_document?: {
+    title: string;
+  };
+}
+
+interface IOptionGroup {
+  key: string;
+  value: string;
+  label: React.ReactNode;
+}
+
+interface IOptions {
+  label: React.ReactNode;
+  options: IOptionGroup[];
+}
+
+// Add helper functions for rendering search results
+const renderTitle = (title: string) => (
+  <Text strong style={{ fontSize: "16px" }}>
+    {title}
+  </Text>
+);
+
+const renderItem = (item: ISearchItem): IOptionGroup => ({
+  key: item.id,
+  value: item.citation_text,
+  label: (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+        <Text strong>{item.citation_text.substring(0, 100)}...</Text>
+        {item.authority_document && (
+          <Tag color="blue">{item.authority_document.title}</Tag>
+        )}
+      </div>
+      {item.reference_identifier && (
+        <div style={{ marginTop: 4 }}>
+          <Text type="secondary">
+            Ref: {item.reference_identifier}
+          </Text>
+        </div>
+      )}
+    </div>
+  ),
+});
 
 export default function CitationsList() {
   const [selectedColumns, setSelectedColumns] = useState<string[]>([
@@ -23,7 +76,8 @@ export default function CitationsList() {
     "created_at",
     "updated_at",
   ]);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [value, setValue] = useState<string>("");
+  const [options, setOptions] = useState<IOptions[]>([]);
 
   const { show } = useNavigation();
 
@@ -55,12 +109,12 @@ export default function CitationsList() {
         authority_document_id: string;
       };
 
-      if (searchTerm) {
+      if (value) {
         filters.push({
           operator: "or",
           value: [
-            { field: "citation_text", operator: "contains", value: searchTerm },
-            { field: "reference_identifier", operator: "contains", value: searchTerm },
+            { field: "citation_text", operator: "contains", value },
+            { field: "reference_identifier", operator: "contains", value },
           ],
         });
       }
@@ -89,12 +143,58 @@ export default function CitationsList() {
 
   // Clear search on page reload
   useEffect(() => {
-    setSearchTerm("");
+    setValue("");
   }, []);
+
+  const { refetch: refetchCitations } = useList<ISearchItem>({
+    resource: "citations",
+    filters: [
+      {
+        operator: "or",
+        value: [
+          { field: "citation_text", operator: "contains", value },
+          { field: "reference_identifier", operator: "contains", value }
+        ]
+      }
+    ],
+    meta: {
+      fields: [
+        "id",
+        "citation_text",
+        "reference_identifier",
+        "authority_document_id",
+        {
+          authority_document: ["title"],
+        },
+      ],
+    },
+    queryOptions: {
+      enabled: false,
+      onSuccess: (data) => {
+        const citationOptionGroup = data.data.map(renderItem);
+        if (citationOptionGroup.length > 0) {
+          setOptions([
+            {
+              label: renderTitle("Citations"),
+              options: citationOptionGroup,
+            },
+          ]);
+        }
+      },
+    },
+  });
+
+  // Update useEffect for search
+  useEffect(() => {
+    setOptions([]);
+    if (value.length > 2) {
+      refetchCitations();
+    }
+  }, [value]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newSearchTerm = e.target.value;
-    setSearchTerm(newSearchTerm);
+    setValue(newSearchTerm);
     
     if (newSearchTerm === "") {
       setFilters([], "replace");
@@ -199,6 +299,33 @@ export default function CitationsList() {
     });
   };
 
+  const renderSearch = () => (
+    <div style={{ 
+      width: 500, 
+      marginBottom: 16,
+      marginLeft: 'auto'  // Push to right side
+    }}>
+      <AutoComplete<string, IOptions>
+        style={{ width: "100%" }}
+        options={options}
+        onSearch={(value: string) => setValue(value)}
+        onSelect={(value, option: any) => {
+          if (option.key) {
+            show("citations", option.key);
+          }
+        }}
+        notFoundContent="No results found"
+        dropdownMatchSelectWidth={true}
+      >
+        <Input
+          placeholder="Search citations by text or reference identifier..."
+          suffix={<SearchOutlined />}
+          size="large"
+        />
+      </AutoComplete>
+    </div>
+  );
+
   return (
     <List
       headerButtons={[
@@ -214,14 +341,7 @@ export default function CitationsList() {
         </Popover>,
       ]}
     >
-      <Input.Search
-        placeholder="Search citations..."
-        value={searchTerm}
-        onChange={handleSearchChange}
-        onSearch={handleSearch}
-        style={{ marginBottom: 16 }}
-        allowClear
-      />
+      {renderSearch()}
       <Table 
         {...tableProps} 
         rowKey="id"

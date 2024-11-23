@@ -1,8 +1,8 @@
 "use client";
 
 import { Create, useForm, useSelect } from "@refinedev/antd";
-import { useCreate, useGetIdentity } from "@refinedev/core";
-import { Form, Input, Select, DatePicker, Tabs, Row, Col, Card } from "antd";
+import { useCreate, useGetIdentity, HttpError } from "@refinedev/core";
+import { Form, Input, Select, DatePicker, Tabs, Row, Col, Card, message } from "antd";
 import { useState } from "react";
 import { AssetsTab } from "../assets";
 import { TasksTab } from "../tasks";
@@ -10,9 +10,86 @@ import { TasksTab } from "../tasks";
 const { TextArea } = Input;
 const { TabPane } = Tabs;
 
+interface IError {
+  response: {
+    data: {
+      errors: {
+        [key: string]: string[];
+      };
+    };
+  };
+}
+
+const sanitizeInput = (value: string): string => {
+  const withoutHtml = value.replace(/<[^>]*>/g, '');
+  
+  const sanitized = withoutHtml.replace(/[^\w\s.,!?-]/g, '');
+  
+  return sanitized.trim();
+};
+
+const riskSummaryRules = [
+  { required: true, message: 'Risk summary is required' },
+  { min: 10, message: 'Risk summary must be at least 10 characters' },
+  { max: 500, message: 'Risk summary cannot exceed 500 characters' },
+  {
+    validator: async (_: any, value: string) => {
+      if (value) {
+        if (/<[^>]*>/.test(value)) {
+          throw new Error('HTML tags are not allowed');
+        }
+        if (/(\b(select|insert|update|delete|drop|union|exec)\b)|(['";])/i.test(value)) {
+          throw new Error('Invalid characters or SQL keywords detected');
+        }
+        if (/[^\w\s.,!?-]/.test(value)) {
+          throw new Error('Contains invalid special characters');
+        }
+      }
+      return Promise.resolve();
+    }
+  }
+];
+
+const descriptionRules = [
+  { max: 2000, message: 'Description cannot exceed 2000 characters' },
+  {
+    validator: async (_: any, value: string) => {
+      if (value) {
+        if (/<[^>]*>/.test(value)) {
+          throw new Error('HTML tags are not allowed');
+        }
+        if (/(\b(select|insert|update|delete|drop|union|exec)\b)|(['";])/i.test(value)) {
+          throw new Error('Invalid characters or SQL keywords detected');
+        }
+        if (/[^\w\s.,!?-]/.test(value)) {
+          throw new Error('Contains invalid special characters');
+        }
+      }
+      return Promise.resolve();
+    }
+  }
+];
+
 export default function RiskCreate() {
   const { formProps, saveButtonProps, queryResult } = useForm({
     resource: "risks",
+    meta: {
+      onError: (error: IError) => {
+        if (error?.response?.data?.errors) {
+          const errors = error.response.data.errors;
+          
+          Object.keys(errors).forEach((key) => {
+            formProps.form?.setFields([
+              {
+                name: key,
+                errors: Array.isArray(errors[key]) ? errors[key] : [errors[key]],
+              },
+            ]);
+          });
+          message.error('Validation failed. Please check the form.');
+        }
+      },
+    },
   });
   const { mutate: createChangeHistory } = useCreate();
   const { data: identity } = useGetIdentity<{ id: string }>();
@@ -44,7 +121,13 @@ export default function RiskCreate() {
 
   const handleCreate = async (values: any) => {
     try {
-      const response = await formProps.onFinish?.(values);
+      const sanitizedValues = {
+        ...values,
+        risk_summary: sanitizeInput(values.risk_summary),
+        description: sanitizeInput(values.description),
+      };
+
+      const response = await formProps.onFinish?.(sanitizedValues);
       if (response && 'data' in response) {
         createChangeHistory({
           resource: "change_history",
@@ -52,13 +135,15 @@ export default function RiskCreate() {
             table_name: "risks",
             record_id: (response as any)?.data?.id,
             action: "Created",
-            change_details: JSON.stringify(values),
+            change_details: JSON.stringify(sanitizedValues),
             changed_by: identity?.id,
           },
         });
+        message.success('Risk created successfully');
       }
     } catch (error) {
       console.error("Error creating risk:", error);
+      message.error('Failed to create risk');
     }
   };
 
@@ -75,7 +160,11 @@ export default function RiskCreate() {
                       <Form.Item
                         name="risk_id"
                         label="Risk ID"
-                        rules={[{ required: true }]}
+                        rules={[
+                          { required: true },
+                          { pattern: /^[A-Za-z0-9-_]+$/, message: "Risk ID can only contain letters, numbers, hyphens and underscores" }
+                        ]}
+                        validateTrigger={["onChange", "onBlur"]}
                       >
                         <Input />
                       </Form.Item>
@@ -84,17 +173,52 @@ export default function RiskCreate() {
                       <Form.Item
                         name="risk_summary"
                         label="Risk Summary"
-                        rules={[{ required: true }]}
+                        rules={riskSummaryRules}
+                        validateTrigger={['onChange', 'onBlur']}
+                        normalize={(value) => value?.trim()}
                       >
-                        <Input />
+                        <Input.TextArea
+                          rows={2}
+                          maxLength={500}
+                          showCount
+                          onPaste={(e) => {
+                            const pastedText = e.clipboardData.getData('text');
+                            e.preventDefault();
+                            const sanitized = sanitizeInput(pastedText);
+                            const target = e.target as HTMLTextAreaElement;
+                            const start = target.selectionStart;
+                            const end = target.selectionEnd;
+                            const currentValue = target.value;
+                            const newValue = currentValue.substring(0, start) + sanitized + currentValue.substring(end);
+                            formProps.form?.setFieldValue('risk_summary', newValue);
+                          }}
+                        />
                       </Form.Item>
                     </Col>
                     <Col span={24}>
                       <Form.Item
                         name="description"
                         label="Description"
+                        rules={descriptionRules}
+                        validateTrigger={['onChange', 'onBlur']}
+                        normalize={(value) => value?.trim()}
                       >
-                        <TextArea rows={4} />
+                        <Input.TextArea
+                          rows={4}
+                          maxLength={2000}
+                          showCount
+                          onPaste={(e) => {
+                            const pastedText = e.clipboardData.getData('text');
+                            e.preventDefault();
+                            const sanitized = sanitizeInput(pastedText);
+                            const target = e.target as HTMLTextAreaElement;
+                            const start = target.selectionStart;
+                            const end = target.selectionEnd;
+                            const currentValue = target.value;
+                            const newValue = currentValue.substring(0, start) + sanitized + currentValue.substring(end);
+                            formProps.form?.setFieldValue('description', newValue);
+                          }}
+                        />
                       </Form.Item>
                     </Col>
                   </Row>
